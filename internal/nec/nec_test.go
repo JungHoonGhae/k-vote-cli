@@ -205,3 +205,80 @@ func TestDownload(t *testing.T) {
 		t.Errorf("filename = %q", got)
 	}
 }
+
+func sampleRecs() []ResultRecord {
+	return []ResultRecord{
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 1000, Votes: 800, Invalid: 20, Abstention: 200,
+			Candidates: []CandidateVote{{"A당", "김갑", 500}, {"B당", "이을", 280}}},
+		{Sido: "서울", District: "종로구", Town: "삼청동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 500, Votes: 400, Invalid: 10, Abstention: 100,
+			Candidates: []CandidateVote{{"A당", "김갑", 200}, {"B당", "이을", 190}}},
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "관내사전투표", VoteType: "관내사전",
+			Electorate: 300, Votes: 290, Invalid: 0, Abstention: 10,
+			Candidates: []CandidateVote{{"A당", "김갑", 100}, {"B당", "이을", 190}}},
+	}
+}
+
+func TestAggregateSgg(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSgg, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 선거구", len(out))
+	}
+	r := out[0]
+	if r.Sido != "서울" || r.District != "종로구" || r.Town != "" {
+		t.Errorf("dimensions wrong: %+v", r)
+	}
+	if r.Electorate != 1800 || r.Votes != 1490 || r.Invalid != 30 || r.Abstention != 310 {
+		t.Errorf("metric sums wrong: %+v", r)
+	}
+	if r.ValidVotes != 1460 { // 1490 - 30
+		t.Errorf("validVotes = %d, want 1460", r.ValidVotes)
+	}
+	if r.Turnout < 0.827 || r.Turnout > 0.828 { // 1490/1800
+		t.Errorf("turnout = %v, want ~0.8278", r.Turnout)
+	}
+	if len(r.Candidates) != 2 {
+		t.Fatalf("got %d candidates, want 2", len(r.Candidates))
+	}
+	if r.Candidates[0].Party != "A당" || r.Candidates[0].Votes != 800 { // 500+200+100
+		t.Errorf("candidate[0] = %+v, want A당 800", r.Candidates[0])
+	}
+	if s := r.Candidates[0].Share; s < 0.547 || s > 0.549 { // 800/1460
+		t.Errorf("share = %v, want ~0.5479", s)
+	}
+}
+
+func TestAggregateByVoteType(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSgg, true)
+	if len(out) != 2 {
+		t.Fatalf("got %d groups, want 2 (본투표 + 관내사전)", len(out))
+	}
+	byType := map[string]AggregatedRecord{}
+	for _, r := range out {
+		byType[r.VoteType] = r
+	}
+	if byType["본투표"].Votes != 1200 { // 800+400
+		t.Errorf("본투표 votes = %d, want 1200", byType["본투표"].Votes)
+	}
+	if byType["관내사전"].Votes != 290 {
+		t.Errorf("관내사전 votes = %d, want 290", byType["관내사전"].Votes)
+	}
+}
+
+func TestAggregateSidoDropsCandidates(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSido, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 시도", len(out))
+	}
+	r := out[0]
+	if r.Sido != "서울" || r.District != "" {
+		t.Errorf("sido dims wrong: %+v", r)
+	}
+	if len(r.Candidates) != 0 {
+		t.Errorf("sido level must drop candidates, got %d", len(r.Candidates))
+	}
+	if r.Votes != 1490 {
+		t.Errorf("metrics still summed: votes = %d, want 1490", r.Votes)
+	}
+}
