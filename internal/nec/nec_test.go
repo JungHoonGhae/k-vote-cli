@@ -3,6 +3,7 @@ package nec
 import (
 	"context"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -280,5 +281,114 @@ func TestAggregateSidoDropsCandidates(t *testing.T) {
 	}
 	if r.Votes != 1490 {
 		t.Errorf("metrics still summed: votes = %d, want 1490", r.Votes)
+	}
+}
+
+// TestAggregateNational verifies that AggNational collapses all records into a
+// single group with empty spatial dimensions and no candidates.
+// sampleRecs totals: Electorate=1000+500+300=1800, Votes=800+400+290=1490,
+// Invalid=20+10+0=30, Abstention=200+100+10=310.
+func TestAggregateNational(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggNational, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 national group", len(out))
+	}
+	r := out[0]
+	// All spatial dimensions must be empty at national level.
+	if r.Sido != "" || r.District != "" || r.Town != "" {
+		t.Errorf("spatial dims must be empty at national level: Sido=%q District=%q Town=%q", r.Sido, r.District, r.Town)
+	}
+	// Candidates are not meaningful across different districts — must be empty.
+	if len(r.Candidates) != 0 {
+		t.Errorf("national level must have no candidates, got %d", len(r.Candidates))
+	}
+	// Metric sums across all three records in sampleRecs.
+	if r.Electorate != 1800 {
+		t.Errorf("Electorate = %d, want 1800", r.Electorate)
+	}
+	if r.Votes != 1490 {
+		t.Errorf("Votes = %d, want 1490", r.Votes)
+	}
+	if r.Invalid != 30 {
+		t.Errorf("Invalid = %d, want 30", r.Invalid)
+	}
+	if r.Abstention != 310 {
+		t.Errorf("Abstention = %d, want 310", r.Abstention)
+	}
+}
+
+// TestAggregateTown verifies that AggTown groups by 읍면동, merging different
+// booths within the same town. sampleRecs has two towns:
+//   - 청운효자동: records 0 (본투표) + 2 (관내사전) → Electorate=1300, Votes=1090, Invalid=20
+//   - 삼청동:    record 1 only → Electorate=500, Votes=400
+//
+// Candidates must be kept at town level (len > 0).
+func TestAggregateTown(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggTown, false)
+	// Two distinct towns: 청운효자동 and 삼청동.
+	if len(out) != 2 {
+		t.Fatalf("got %d groups, want 2 town groups", len(out))
+	}
+	// Build a lookup by town name for order-independent assertions.
+	byTown := map[string]AggregatedRecord{}
+	for _, r := range out {
+		byTown[r.Town] = r
+	}
+	chung, ok := byTown["청운효자동"]
+	if !ok {
+		t.Fatal("청운효자동 group missing")
+	}
+	// Records 0 and 2 merged: Electorate=1000+300=1300, Votes=800+290=1090, Invalid=20+0=20.
+	if chung.Electorate != 1300 {
+		t.Errorf("청운효자동 Electorate = %d, want 1300", chung.Electorate)
+	}
+	if chung.Votes != 1090 {
+		t.Errorf("청운효자동 Votes = %d, want 1090", chung.Votes)
+	}
+	if chung.Invalid != 20 {
+		t.Errorf("청운효자동 Invalid = %d, want 20", chung.Invalid)
+	}
+	// Candidates must be populated at town level.
+	if len(chung.Candidates) == 0 {
+		t.Error("청운효자동 must have candidates at town level")
+	}
+	// 삼청동 group corresponds to record 1 only.
+	sam, ok := byTown["삼청동"]
+	if !ok {
+		t.Fatal("삼청동 group missing")
+	}
+	if sam.Electorate != 500 || sam.Votes != 400 {
+		t.Errorf("삼청동 metrics wrong: Electorate=%d Votes=%d, want 500/400", sam.Electorate, sam.Votes)
+	}
+}
+
+// TestAggregateZeroElectorateNoNaN verifies that a record with Electorate==0
+// and all-zero votes produces Turnout==0 and candidate Share==0 — not NaN —
+// since the implementation guards the division by zero.
+func TestAggregateZeroElectorateNoNaN(t *testing.T) {
+	recs := []ResultRecord{
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 0, Votes: 0, Invalid: 0, Abstention: 0,
+			Candidates: []CandidateVote{{"A당", "김갑", 0}}},
+	}
+	out := Aggregate(recs, AggSgg, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1", len(out))
+	}
+	r := out[0]
+	if math.IsNaN(r.Turnout) {
+		t.Errorf("Turnout must not be NaN when Electorate==0, got %v", r.Turnout)
+	}
+	if r.Turnout != 0 {
+		t.Errorf("Turnout = %v, want 0", r.Turnout)
+	}
+	if len(r.Candidates) != 1 {
+		t.Fatalf("got %d candidates, want 1", len(r.Candidates))
+	}
+	if math.IsNaN(r.Candidates[0].Share) {
+		t.Errorf("candidate Share must not be NaN when ValidVotes==0, got %v", r.Candidates[0].Share)
+	}
+	if r.Candidates[0].Share != 0 {
+		t.Errorf("candidate Share = %v, want 0", r.Candidates[0].Share)
 	}
 }
