@@ -90,6 +90,9 @@ kvote nec results --file ./downloads/*.csv -f jsonl  # 이미 받은 CSV 파싱 
 # 집계 뷰 (중립 파라미터 — 비교·판단은 소비자/AI 에이전트가)
 kvote nec results 15025527 --aggregate sgg --by-votetype -f jsonl   # 선거구×투표유형
 kvote nec results 15025527 --aggregate sido -f table                # 시도별 투표율
+# XLSX 지방선거 개표결과 — 공통 스키마(선거종류·차원 라벨 보존)
+kvote nec pull 15101509 -o ./downloads                       # 제8회 지방선거 XLSX 원본
+kvote nec results --file ./downloads/*.xlsx --race 교육감 --leaf-only -f jsonl
 ```
 
 ### 필터 (results 게시판)
