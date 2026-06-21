@@ -129,6 +129,9 @@ func necResultsCmd() *cobra.Command {
 			}
 
 			if isXLSX(raw) {
+				if aggregate != "none" {
+					fmt.Fprintln(cmd.ErrOrStderr(), "주의: --aggregate 는 XLSX 에 미지원입니다 (P2 비범위). --leaf-only 로 leaf 행만 거를 수 있습니다.")
+				}
 				ers, err := nec.ParseResultsXLSX(raw)
 				if err != nil {
 					return err

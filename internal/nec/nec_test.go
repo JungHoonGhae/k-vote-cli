@@ -596,6 +596,25 @@ func TestResultRecordToElectionResult(t *testing.T) {
 	}
 }
 
+// TestResultRecordToElectionResultGyoSeonSang verifies Fix B: CSV 거소선상
+// voteType is normalized to 거소 in ToElectionResult so the common schema
+// matches the XLSX vocabulary (거소투표 → 거소).
+func TestResultRecordToElectionResultGyoSeonSang(t *testing.T) {
+	r := ResultRecord{
+		Sido: "서울", District: "종로구", Town: "거소·선상투표", Booth: "",
+		VoteType: "거소선상", Electorate: 50, Votes: 40, Invalid: 0, Abstention: 10,
+		Candidates: []CandidateVote{{"A당", "홍길동", 40}},
+	}
+	e := r.ToElectionResult()
+	if e.VoteType != "거소" {
+		t.Errorf("ToElectionResult: VoteType = %q, want \"거소\" (CSV 거소선상→거소 정규화)", e.VoteType)
+	}
+	// Raw ResultRecord.VoteType must remain unchanged (classifyVoteType P1 stays).
+	if r.VoteType != "거소선상" {
+		t.Errorf("ResultRecord.VoteType mutated: got %q, want \"거소선상\"", r.VoteType)
+	}
+}
+
 func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
 	f := excelize.NewFile()
 	f.SetSheetName(f.GetSheetName(0), "엉뚱시트")
@@ -620,5 +639,193 @@ func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
 	}
 	if len(recs) != 1 || recs[0].Race != "시·도지사" {
 		t.Errorf("unanchored sheet should be skipped, valid one parsed: %+v", recs)
+	}
+}
+
+// TestParseResultsXLSXCandidateRedefinition verifies the load-bearing
+// "candidate header refreshes per 선거구" behavior: each 선거구 block carries
+// its OWN candidate-definition row, so a later block's data rows must use the
+// candidates declared in THAT block's header, not the first block's header.
+func TestParseResultsXLSXCandidateRedefinition(t *testing.T) {
+	t.Helper()
+	f := excelize.NewFile()
+	sheet := "시·도의회의원"
+	f.SetSheetName(f.GetSheetName(0), sheet)
+
+	put := func(rows [][]any) {
+		for i, row := range rows {
+			cell, _ := excelize.CoordinatesToCellName(1, i+1)
+			if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	// row0: anchor labels. Dimension cols: 읍면동명(0), 구분(1). Then 선거인수, 투표수,
+	// 후보자별 득표수(start), 계(end), 무효투표수, 기권수.
+	// row1: merged-cell remnant (all empty).
+	// row2: Block-1 candidate-definition row (읍면동 empty, 구분 empty, 선거인수 empty).
+	// row3: Block-1 data row (구분=합계, with numbers).
+	// row4: Block-2 candidate-definition row with DIFFERENT candidates.
+	// row5: Block-2 data row.
+	put([][]any{
+		// row0: headers
+		{"읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		// row1: merged remnant
+		{"", "", "", "", "", "", "", "", ""},
+		// row2: Block-1 candidate-def (선거인수 empty = discriminator)
+		{"", "", "", "", "더불어민주당\n채행숙", "국민의힘\n윤종복", "", "", ""},
+		// row3: Block-1 data
+		{"", "합계", "500", "400", "220", "170", "390", "10", "100"},
+		// row4: Block-2 candidate-def with DIFFERENT candidates
+		{"", "", "", "", "더불어민주당\n여봉무", "국민의힘\n김아무개", "", "", ""},
+		// row5: Block-2 data
+		{"", "합계", "600", "480", "260", "210", "470", "10", "120"},
+	})
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recs, err := ParseResultsXLSX(buf.Bytes())
+	if err != nil {
+		t.Fatalf("ParseResultsXLSX: %v", err)
+	}
+	// Two data rows (one per block); two candidate-def rows are skipped.
+	if len(recs) != 2 {
+		t.Fatalf("got %d records, want 2: %+v", len(recs), recs)
+	}
+
+	// Block-1 record: candidates must be 채행숙 / 윤종복.
+	r1 := recs[0]
+	if len(r1.Candidates) != 2 {
+		t.Fatalf("block-1: got %d candidates, want 2: %+v", len(r1.Candidates), r1.Candidates)
+	}
+	if r1.Candidates[0].Name != "채행숙" || r1.Candidates[0].Party != "더불어민주당" {
+		t.Errorf("block-1 cand[0] = %+v, want 더불어민주당/채행숙", r1.Candidates[0])
+	}
+	if r1.Candidates[1].Name != "윤종복" || r1.Candidates[1].Party != "국민의힘" {
+		t.Errorf("block-1 cand[1] = %+v, want 국민의힘/윤종복", r1.Candidates[1])
+	}
+
+	// Block-2 record: candidates must be 여봉무 / 김아무개 (header refreshed).
+	r2 := recs[1]
+	if len(r2.Candidates) != 2 {
+		t.Fatalf("block-2: got %d candidates, want 2: %+v", len(r2.Candidates), r2.Candidates)
+	}
+	if r2.Candidates[0].Name != "여봉무" || r2.Candidates[0].Party != "더불어민주당" {
+		t.Errorf("block-2 cand[0] = %+v, want 더불어민주당/여봉무", r2.Candidates[0])
+	}
+	if r2.Candidates[1].Name != "김아무개" || r2.Candidates[1].Party != "국민의힘" {
+		t.Errorf("block-2 cand[1] = %+v, want 국민의힘/김아무개", r2.Candidates[1])
+	}
+}
+
+// TestParseResultsXLSXLeafSum verifies that records with Aggregate==false form a
+// clean disjoint partition: their per-candidate vote sums match the 합계 row.
+// Layout (one 선거구, 2 candidates A and B):
+//
+//	관외사전투표 (구분):       A=10, B=20  — leaf
+//	거소투표 (구분):           A=1,  B=2   — leaf
+//	청운효자동/소계 (구분):    A=30, B=40  — aggregate (excluded from leaf sum)
+//	청운효자동/관내사전투표:   A=5,  B=8   — leaf
+//	청운효자동/제1투 (구분):   A=25, B=32  — leaf (본투표)
+//	합계 (구분):               A=41, B=62  — aggregate (the reference total)
+//
+// Leaf sum: A = 10+1+5+25 = 41, B = 20+2+8+32 = 62. Matches 합계.
+func TestParseResultsXLSXLeafSum(t *testing.T) {
+	t.Helper()
+	f := excelize.NewFile()
+	sheet := "시·도의회의원"
+	f.SetSheetName(f.GetSheetName(0), sheet)
+
+	put := func(rows [][]any) {
+		for i, row := range rows {
+			cell, _ := excelize.CoordinatesToCellName(1, i+1)
+			if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	// Columns: 읍면동명(0), 구분(1), 선거인수(2), 투표수(3),
+	//          후보자별 득표수 start(4), cand-B(5), 계(6), 무효투표수(7), 기권수(8)
+	put([][]any{
+		// row0: anchor labels
+		{"읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		// row1: merged-cell remnant
+		{"", "", "", "", "", "", "", "", ""},
+		// row2: candidate-definition row
+		{"", "", "", "", "더불어민주당\n후보A", "국민의힘\n후보B", "", "", ""},
+		// Data rows:
+		// 관외사전투표 leaf
+		{"", "관외사전투표", "1000", "30", "10", "20", "30", "0", "0"},
+		// 거소투표 leaf
+		{"", "거소투표", "0", "3", "1", "2", "3", "0", "0"},
+		// 청운효자동 소계 — aggregate
+		{"청운효자동", "소계", "500", "65", "30", "40", "70", "5", "0"},
+		// 청운효자동 관내사전투표 leaf
+		{"청운효자동", "관내사전투표", "200", "13", "5", "8", "13", "0", "0"},
+		// 청운효자동 제1투 leaf (본투표)
+		{"청운효자동", "제1투", "300", "57", "25", "32", "57", "0", "0"},
+		// 합계 — aggregate, reference total
+		{"", "합계", "1500", "98", "41", "62", "103", "5", "0"},
+	})
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recs, err := ParseResultsXLSX(buf.Bytes())
+	if err != nil {
+		t.Fatalf("ParseResultsXLSX: %v", err)
+	}
+
+	// Find the 합계 row for reference totals.
+	var haptaeA, haptaeB int
+	var haptaeFound bool
+	for _, r := range recs {
+		if r.Aggregate && r.Dim("구분") == "합계" {
+			haptaeFound = true
+			for _, c := range r.Candidates {
+				switch c.Name {
+				case "후보A":
+					haptaeA = c.Votes
+				case "후보B":
+					haptaeB = c.Votes
+				}
+			}
+		}
+	}
+	if !haptaeFound {
+		t.Fatal("합계 row not found in parsed records")
+	}
+	if haptaeA != 41 || haptaeB != 62 {
+		t.Errorf("합계 row: A=%d B=%d, want A=41 B=62", haptaeA, haptaeB)
+	}
+
+	// Sum votes over all leaf records (Aggregate==false).
+	leafSumA, leafSumB := 0, 0
+	for _, r := range recs {
+		if r.Aggregate {
+			continue
+		}
+		for _, c := range r.Candidates {
+			switch c.Name {
+			case "후보A":
+				leafSumA += c.Votes
+			case "후보B":
+				leafSumB += c.Votes
+			}
+		}
+	}
+
+	if leafSumA != haptaeA {
+		t.Errorf("leaf sum A = %d, want %d (= 합계 row)", leafSumA, haptaeA)
+	}
+	if leafSumB != haptaeB {
+		t.Errorf("leaf sum B = %d, want %d (= 합계 row)", leafSumB, haptaeB)
 	}
 }
