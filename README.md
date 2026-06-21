@@ -57,12 +57,15 @@
 | `nesdc elections` | 선거구분 코드(`--gubun` 값) 실시간 조회 | — |
 | `nesdc agencies` | 조사기관 등록현황 | `--cancelled` 취소현황 |
 
-#### `nec` — 개표결과 (중앙선거관리위원회 → data.go.kr, 키 불필요)
+#### `nec` — 개표결과 (중앙선거관리위원회, 키 불필요)
+
+소스 2개: `--source datagokr`(기본, data.go.kr) · `--source openportal`(data.nec.go.kr 개방포털
+— robots 허용, 대선 XLSX 직접 + 투표율·당선인·후보자).
 
 | 명령 | 하는 일 | 핵심 옵션 |
 |---|---|---|
-| `nec datasets` | 선관위 공개 파일 데이터 검색 (개표결과 등) | `-q` 검색어 |
-| `nec pull <pk>` | 개표결과 원본 다운로드 (CSV/XLSX 자동) | `-o` 저장 위치 |
+| `nec datasets` | 선관위 공개 파일 데이터 검색 (개표결과 등) | `-q` 검색어 · `--source datagokr\|openportal` |
+| `nec pull <pk\|dataId>` | 개표결과 원본 다운로드 (CSV/XLSX 자동) | `-o` 저장 위치 · `--source`(개방포털은 dataId) |
 | `nec results <pk>` | 개표결과를 **투표구별로 정규화** (CSV=총선·대선, XLSX=지방선거 멀티시트) | `--file` 로컬 파싱 · `--aggregate {town\|sgg\|sido\|national}` 다단계 집계 · `--by-votetype` 투표유형 분리 · `--race`/`--leaf-only`(XLSX) |
 
 ### 정규화가 주는 것 (중립 파라미터)
@@ -90,8 +93,8 @@
 ## 설치
 
 ```bash
-git clone https://github.com/JungHoonGhae/kvote
-cd kvote
+git clone https://github.com/JungHoonGhae/kvote-cli
+cd kvote-cli
 make build        # -> bin/kvote
 # 또는
 make install      # $GOBIN 에 설치
@@ -141,6 +144,10 @@ kvote nec results 15025527 --aggregate sido -f table                # 시도별 
 # XLSX 지방선거 개표결과 — 공통 스키마(선거종류·차원 라벨 보존)
 kvote nec pull 15101509 -o ./downloads                       # 제8회 지방선거 XLSX 원본
 kvote nec results --file ./downloads/*.xlsx --race 교육감 --leaf-only -f jsonl
+
+# 개방포털(data.nec.go.kr) — robots 허용·키리스, 대선 XLSX 직접 + 투표율·당선인·후보자
+kvote nec datasets -q 대통령선거 --source openportal -f table   # dataId 카탈로그
+kvote nec pull 8 --source openportal -o ./downloads            # 제18~21대 대선 개표결과 XLSX
 ```
 
 ### 필터 (results 게시판)
