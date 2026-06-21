@@ -362,6 +362,37 @@ func TestAggregateTown(t *testing.T) {
 	}
 }
 
+func TestDeriveVoteType(t *testing.T) {
+	cases := []struct {
+		gubun, wantVT string
+		wantAgg       bool
+	}{
+		{"합계", "", true},
+		{"소계", "", true},
+		{"거소투표", "거소", false},
+		{"관외사전투표", "관외사전", false},
+		{"관내사전투표", "관내사전", false},
+		{"무효 투표수", "본투표", false}, // 공백 포함 임의값도 default
+		{"청운효자동", "본투표", false},
+	}
+	for _, c := range cases {
+		vt, agg := deriveVoteType(c.gubun)
+		if vt != c.wantVT || agg != c.wantAgg {
+			t.Errorf("deriveVoteType(%q) = (%q,%v), want (%q,%v)", c.gubun, vt, agg, c.wantVT, c.wantAgg)
+		}
+	}
+}
+
+func TestElectionResultDim(t *testing.T) {
+	e := ElectionResult{Dimensions: []Dimension{{"시도명", "서울"}, {"구분", "소계"}}}
+	if e.Dim("시도명") != "서울" {
+		t.Errorf("Dim(시도명) = %q", e.Dim("시도명"))
+	}
+	if e.Dim("없는라벨") != "" {
+		t.Errorf("missing label should be empty, got %q", e.Dim("없는라벨"))
+	}
+}
+
 // TestAggregateZeroElectorateNoNaN verifies that a record with Electorate==0
 // and all-zero votes produces Turnout==0 and candidate Share==0 — not NaN —
 // since the implementation guards the division by zero.
