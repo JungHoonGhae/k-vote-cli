@@ -285,3 +285,56 @@ func TestDownloadURLNotReEncoded(t *testing.T) {
 		t.Errorf("DownloadURL =\n %q\nwant\n %q", got, want)
 	}
 }
+
+func sampleCompFields() []Field {
+	return []Field{
+		{Labels: []string{"표본의 크기"}},
+		{Labels: []string{"구분", "조사완료 사례수(명)", "가중값 적용 기준 사례수(명)"}},
+		{Labels: []string{"전체"}, Values: []string{"1,001", "1001"}},
+		{Labels: []string{"성별", "남"}, Values: []string{"546", "496"}},
+		{Labels: []string{"여"}, Values: []string{"455", "505"}},
+		{Labels: []string{"연령대별", "18~29세"}, Values: []string{"128", "149"}},
+		{Labels: []string{"70세 이상"}, Values: []string{"153", "162"}},
+		{Labels: []string{"지역별", "서울"}, Values: []string{"198", "185"}},
+		{Labels: []string{"제주"}, Values: []string{"14", "12"}},
+		{Labels: []string{"조사방법1"}, Values: []string{"무선 ARS"}}, // 블록 종료 트리거
+		{Labels: []string{"기본가중", "산출방법"}, Values: []string{"성별·연령별·지역별 가중값 부여"}},
+		{Labels: []string{"표본오차"}, Values: []string{"95% 신뢰수준에 ±3.1%P"}},
+	}
+}
+
+func TestSampleCompositionOf(t *testing.T) {
+	sc := SampleCompositionOf(&Detail{Fields: sampleCompFields()})
+	if sc == nil {
+		t.Fatal("expected a SampleComposition, got nil")
+	}
+	if sc.Total == nil || sc.Total.Completed != 1001 || sc.Total.Weighted != 1001 {
+		t.Errorf("total wrong: %+v", sc.Total)
+	}
+	if len(sc.Crosstabs) != 3 {
+		t.Fatalf("got %d crosstabs, want 3 (성별/연령대별/지역별): %+v", len(sc.Crosstabs), sc.Crosstabs)
+	}
+	g := sc.Crosstabs[0]
+	if g.Dimension != "성별" || len(g.Cells) != 2 || g.Cells[0].Category != "남" || g.Cells[0].Completed != 546 || g.Cells[0].Weighted != 496 {
+		t.Errorf("성별 crosstab wrong: %+v", g)
+	}
+	if g.Cells[1].Category != "여" || g.Cells[1].Completed != 455 {
+		t.Errorf("성별 여 wrong: %+v", g.Cells[1])
+	}
+	if sc.Crosstabs[1].Dimension != "연령대별" || sc.Crosstabs[1].Cells[0].Category != "18~29세" {
+		t.Errorf("연령 crosstab wrong: %+v", sc.Crosstabs[1])
+	}
+	if sc.Crosstabs[2].Dimension != "지역별" || sc.Crosstabs[2].Cells[1].Category != "제주" {
+		t.Errorf("지역 crosstab wrong: %+v", sc.Crosstabs[2])
+	}
+	if sc.Weighting == "" || sc.MarginError != "95% 신뢰수준에 ±3.1%P" {
+		t.Errorf("weighting/marginError wrong: %q / %q", sc.Weighting, sc.MarginError)
+	}
+}
+
+func TestSampleCompositionOfNoBlock(t *testing.T) {
+	d := &Detail{Fields: []Field{{Labels: []string{"조사기관명"}, Values: []string{"리얼미터"}}}}
+	if sc := SampleCompositionOf(d); sc != nil {
+		t.Errorf("expected nil when no composition block, got %+v", sc)
+	}
+}
