@@ -77,20 +77,24 @@ type ElectionResult struct {
 
 ### 3.1 voteType / aggregate 파생 규칙 (고정)
 
-구분(공백 제거 후) 기준:
-- `거소투표` → voteType=`거소`, aggregate=false … (단, 읍면동 비어있는 선거구-level 거소/관외는
-  aggregate=true 로 본다 — 아래 판정)
-- `관외사전투표` → voteType=`관외사전`
-- `관내사전투표` → voteType=`관내사전`
-- `합계` → aggregate=true, voteType=""
-- `소계` → aggregate=true, voteType=""
-- 그 외(투표구명/읍면동 leaf) → voteType=`본투표`, aggregate=false
+**`aggregate` 는 소스 자체의 소계 라벨만 읽는다 — 우리 해석을 넣지 않는다.** 구분(공백 제거)이
+`합계` 또는 `소계` 면 aggregate=true(소스가 명시한 집계), 그 외는 false. voteType 은 구분의
+투표유형 라벨:
 
-**aggregate 판정의 핵심**: 읍면동명이 비어 있고 구분이 합계/거소투표/관외사전투표인 행은
-**선거구 단위 집계**(aggregate=true). 읍면동명이 있고 구분이 소계인 행은 **읍면동 집계**
-(aggregate=true). 읍면동명이 있고 구분이 관내사전투표 또는 투표구명인 행이 **leaf**
-(aggregate=false). → 즉 `aggregate = (구분 in {합계,소계}) || (읍면동 비어있음 && 구분 in {거소투표,관외사전투표})`.
-거소/관외사전은 본래 선거구 단위로만 집계되므로 leaf 가 아니다.
+| 구분(공백제거) | voteType | aggregate |
+|---|---|---|
+| `합계` | `""` | true |
+| `소계` | `""` | true |
+| `거소투표` | `거소` | false |
+| `관외사전투표` | `관외사전` | false |
+| `관내사전투표` | `관내사전` | false |
+| 그 외 (투표구명 등) | `본투표` | false |
+
+**정합성 근거(검증용, 강제 아님)**: 합계 = 거소 + 관외사전 + Σ(읍면동 소계), 소계 = 관내사전 +
+Σ(투표구 본투표). 따라서 `aggregate==false` 행 집합 = {본투표·관내사전·거소·관외사전} 은 서로
+겹치지 않고 합이 합계와 같다 → 소비자가 `aggregate==false` 로 필터하면 중복 없는 분할을 얻는다.
+우리는 이 사실을 *제공*만 하고 강제·판단하지 않는다. (읍면동 비어있음 여부 같은 추론은 쓰지 않아
+규칙이 단순·견고하다.)
 
 ## 4. 컴포넌트 (internal/nec)
 
