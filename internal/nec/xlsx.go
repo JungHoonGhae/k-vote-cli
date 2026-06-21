@@ -15,6 +15,13 @@ type candHeader struct {
 	Name  string
 }
 
+// isGyoEducSheet returns true when the sheet name indicates a 교육감 or 교육의원
+// race, which is non-partisan by law: single-part candidate cells carry a
+// person NAME, not a party name.
+func isGyoEducSheet(sheetName string) bool {
+	return strings.Contains(sheetName, "교육감") || strings.Contains(sheetName, "교육의원")
+}
+
 // ParseResultsXLSX parses a NEC 개표결과 XLSX file (multi-sheet, wide format) into
 // a slice of ElectionResult in long format. Each sheet becomes one Race. Sheets that
 // lack the required anchor columns (선거인수 / 후보자별 득표수) are skipped with a
@@ -110,9 +117,8 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 			}
 		}
 
-		// Candidate block is [candStart, gyeIdx). If gyeIdx not found, use len(row0)
-		// minus the tail anchors — but the algorithm says treat as [candStart, len) if
-		// 계 not found; for safety, just use len(row0).
+		// Candidate block is [candStart, gyeIdx). If gyeIdx not found, fall back to
+		// len(row0) so every remaining column is treated as a candidate slot.
 		candEnd := len(row0)
 		if gyeIdx >= 0 {
 			candEnd = gyeIdx
@@ -124,16 +130,13 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 			dimLabels[i] = labelAt(i)
 		}
 
-		// Find indices for 읍면동명 and 구분 within dimension columns (used for
-		// candidate-definition row detection).
-		emdDimIdx := -1  // 읍면동명
+		// Find index of 구분 within dimension columns (used for vote-type derivation).
+		// Use the same space-normalisation as the rest of the label comparisons (labelNorm).
 		gubunDimIdx := -1 // 구분
-		for i, lbl := range dimLabels {
-			switch strings.ReplaceAll(lbl, " ", "") {
-			case "읍면동명":
-				emdDimIdx = i
-			case "구분":
+		for i := 0; i < electIdx; i++ {
+			if labelNorm(i) == "구분" {
 				gubunDimIdx = i
+				break
 			}
 		}
 
@@ -157,6 +160,10 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 			return true
 		}
 
+		// gyoEduc records whether this sheet uses person-name semantics for
+		// single-part candidate cells (교육감/교육의원 are non-partisan by law).
+		gyoEduc := isGyoEducSheet(name)
+
 		// Process data rows starting from index 2 (skip row0=labels, row1=merged remnants).
 		for ri := 2; ri < len(rows); ri++ {
 			row := rows[ri]
@@ -166,49 +173,50 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 				continue
 			}
 
-			// Check if this is a candidate-definition row:
-			// 읍면동명 and 구분 dimension values are both empty,
-			// AND at least one candidate cell is non-empty.
-			emdVal := cellAt(row, emdDimIdx)
-			gubunVal := cellAt(row, gubunDimIdx)
+			// Detect a candidate-definition row using the 선거인수 anchor:
+			// header rows carry no numbers — real data rows always have 선거인수.
+			// Additionally require at least one candidate cell to be non-empty.
+			// The dimension-empty check is kept as corroboration but the
+			// electorate-empty signal is the primary discriminator, ensuring
+			// correct behaviour even when 읍면동명/구분 columns are absent.
+			someCandNonEmpty := false
+			for j := 0; j < len(candHeaders); j++ {
+				if cellAt(row, candStart+j) != "" {
+					someCandNonEmpty = true
+					break
+				}
+			}
 
-			isCandDef := (emdDimIdx < 0 || emdVal == "") && (gubunDimIdx < 0 || gubunVal == "")
+			isCandDef := someCandNonEmpty && cellAt(row, electIdx) == ""
+
 			if isCandDef {
-				// Verify at least one candidate cell is non-empty.
-				hasCandidate := false
+				// Update candidate header for every candidate column.
 				for j := 0; j < len(candHeaders); j++ {
 					colIdx := candStart + j
 					v := cellAt(row, colIdx)
-					if v != "" {
-						hasCandidate = true
-						break
+					if v == "" {
+						candHeaders[j] = nil
+						continue
 					}
-				}
-				if hasCandidate {
-					// Update candidate header.
-					for j := 0; j < len(candHeaders); j++ {
-						colIdx := candStart + j
-						v := cellAt(row, colIdx)
-						if v == "" {
-							candHeaders[j] = nil
-							continue
+					parts := strings.Split(v, "\n")
+					if len(parts) >= 2 {
+						candHeaders[j] = &candHeader{
+							Party: strings.TrimSpace(parts[0]),
+							Name:  strings.TrimSpace(parts[1]),
 						}
-						parts := strings.Split(v, "\n")
-						if len(parts) >= 2 {
-							candHeaders[j] = &candHeader{
-								Party: strings.TrimSpace(parts[0]),
-								Name:  strings.TrimSpace(parts[1]),
-							}
+					} else {
+						// Single-part candidate cell: sheet semantics determine mapping.
+						// 교육감/교육의원 races are non-partisan — single part is a NAME.
+						// All other sheets (비례대표 etc.) — single part is a PARTY.
+						s := strings.TrimSpace(parts[0])
+						if gyoEduc {
+							candHeaders[j] = &candHeader{Party: "", Name: s}
 						} else {
-							// Single part: treat as party, name empty.
-							candHeaders[j] = &candHeader{
-								Party: strings.TrimSpace(parts[0]),
-								Name:  "",
-							}
+							candHeaders[j] = &candHeader{Party: s, Name: ""}
 						}
 					}
-					continue // do not emit as a record
 				}
+				continue // do not emit as a record
 			}
 
 			// Regular data row: build ElectionResult.

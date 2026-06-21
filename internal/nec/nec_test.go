@@ -512,6 +512,72 @@ func TestParseResultsXLSX(t *testing.T) {
 	}
 }
 
+// buildXLSXGyo builds a minimal 교육감 XLSX:
+//   - Sheet name: "교육감"
+//   - row0: dimension headers + 선거인수, 투표수, 후보자별 득표수, "", 계, 무효투표수, 기권수
+//   - row1: merged-cell remnant (all empty)
+//   - row2: candidate-definition row — single-part names, dims empty, 선거인수 empty
+//   - row3: data row (구분=합계, with numbers)
+func buildXLSXGyo(t *testing.T) []byte {
+	t.Helper()
+	f := excelize.NewFile()
+	sheet := "교육감"
+	f.SetSheetName(f.GetSheetName(0), sheet)
+	put := func(rows [][]any) {
+		for i, row := range rows {
+			cell, _ := excelize.CoordinatesToCellName(1, i+1)
+			if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	put([][]any{
+		// row0: header labels
+		{"선거구명", "구시군명", "읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		// row1: merged remnant — all empty
+		{"", "", "", "", "", "", "", "", "", "", ""},
+		// row2: candidate-definition row — single-part person names, 선거인수 empty
+		{"", "", "", "", "", "", "최보선", "조희연", "", "", ""},
+		// row3: data row
+		{"서울특별시", "강남구", "", "합계", "500000", "350000", "180000", "165000", "345000", "5000", "150000"},
+	})
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// TestParseResultsXLSXGyo verifies that single-part candidate cells on a
+// 교육감 sheet map to Name (not Party), since 교육감 races are non-partisan.
+func TestParseResultsXLSXGyo(t *testing.T) {
+	recs, err := ParseResultsXLSX(buildXLSXGyo(t))
+	if err != nil {
+		t.Fatalf("ParseResultsXLSX(교육감): %v", err)
+	}
+	// One data row (the 합계 row).
+	if len(recs) != 1 {
+		t.Fatalf("got %d records, want 1: %+v", len(recs), recs)
+	}
+	r := recs[0]
+	if r.Race != "교육감" {
+		t.Errorf("race = %q, want 교육감", r.Race)
+	}
+	if r.Electorate != 500000 {
+		t.Errorf("electorate = %d, want 500000", r.Electorate)
+	}
+	if len(r.Candidates) != 2 {
+		t.Fatalf("got %d candidates, want 2: %+v", len(r.Candidates), r.Candidates)
+	}
+	// 교육감: single-part → Name set, Party empty.
+	if r.Candidates[0].Party != "" || r.Candidates[0].Name != "최보선" {
+		t.Errorf("candidates[0] = %+v, want Party=\"\" Name=\"최보선\"", r.Candidates[0])
+	}
+	if r.Candidates[1].Party != "" || r.Candidates[1].Name != "조희연" {
+		t.Errorf("candidates[1] = %+v, want Party=\"\" Name=\"조희연\"", r.Candidates[1])
+	}
+}
+
 func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
 	f := excelize.NewFile()
 	f.SetSheetName(f.GetSheetName(0), "엉뚱시트")
