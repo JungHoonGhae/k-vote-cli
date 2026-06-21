@@ -71,7 +71,9 @@ kvote nesdc sync --max-pages 5 --pull -o ./archive   # 메타 + 첨부 동시 �
 
 # --- NEC: 선관위 개표결과·투표율 (data.go.kr 공개 파일, 키 불필요) ---
 kvote nec datasets -q 개표결과 -f table              # 선관위 공개 데이터셋 검색
-kvote nec pull 15025527 -o ./downloads               # 제22대 총선 개표결과 CSV
+kvote nec pull 15025527 -o ./downloads               # 제22대 총선 개표결과 CSV 원본
+kvote nec results 15025527 -f jsonl > votes.jsonl    # 투표구별 정규화 (후보 득표 포함)
+kvote nec results --file ./downloads/*.csv -f jsonl  # 이미 받은 CSV 파싱 (재다운로드 X)
 ```
 
 ### 필터 (results 게시판)

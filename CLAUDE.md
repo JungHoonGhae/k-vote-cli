@@ -40,6 +40,7 @@ internal/nec/       NEC provider — data.go.kr 공개 파일 데이터 클라�
   client.go         rate-limited HTTP + getDoc
   datasets.go       선관위 파일 데이터 검색 파서 (selectDataSetList.do, dt 포맷/제목 분리)
   download.go       uddi 조회 → selectFileDataDownload.do(atchFileId) → fileDownload.do
+  results.go        개표결과 CSV(EUC-KR) long-format → 투표구별 ResultRecord 정규화
   filename.go       Content-Disposition 파일명 인코딩 복구
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)
@@ -97,8 +98,11 @@ internal/version/   ldflags 주입 버전 메타
 - **다운로드 3단계**(`download.go`): ① `/data/{pk}/fileData.do` 상세에서 `fn_fileDataDown(pk,
   'uddi:…')` 의 publicDataDetailPk 추출 → ② `selectFileDataDownload.do` 가 `atchFileId`·파일명
   JSON 반환 → ③ `/cmm/cmm/fileDownload.do?atchFileId=&fileDetailSn=&dataNm=` 가 실제 파일 스트림.
-- **개표결과 CSV 는 CP949(EUC-KR)** 인코딩 long-format(시도/선거구/읍면동/투표구/후보자/득표수).
-  현재 provider 는 원본 파일 다운로드까지 제공(정규화 파서는 향후 과제).
+- **개표결과 CSV 정규화**(`results.go`): CP949(EUC-KR) long-format(시도/선거구/읍면동/투표구/
+  후보자/득표수)을 투표구별 `ResultRecord`(선거인수·투표수·무효·기권 + 후보 득표)로 묶는다.
+  **블록 구분자는 `선거인수` 행** — (시도,선거구,읍면동,투표구) 튜플은 통합 선거구·분할 사전투표로
+  중복돼 키 기준 그룹핑하면 동명 투표구가 병합된다(434건 실측). 후보 행은 `정당 이름`을 첫 공백
+  기준으로 분리(무소속 포함). `nec pull` 은 원본, `nec results` 는 정규화(--file 로 로컬 파싱).
 
 ## 컨벤션
 

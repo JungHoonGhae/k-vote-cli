@@ -2,11 +2,16 @@ package nec
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/transform"
 )
 
 // listHTML mirrors the data.go.kr file-dataset listing markup: a <dl> per
@@ -106,6 +111,70 @@ func TestResolve(t *testing.T) {
 	}
 	if fi.Name == "" {
 		t.Error("missing name")
+	}
+}
+
+func TestParseResults(t *testing.T) {
+	// Two polling units that share the same (시도,선거구,읍면동,투표구) tuple —
+	// they must NOT be merged. 무효 투표수 carries an interior space.
+	csvText := "시도명,선거구명,법정읍면동명,투표구명,후보자,득표수\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,선거인수,2512\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,투표수,2500\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,더불어민주당 곽상언,1400\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,무소속 고주환,1090\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,무효 투표수,10\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,기권자수,12\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,선거인수,655\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,투표수,650\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,국민의힘 황두남,650\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,무효 투표수,0\n" +
+		"부산광역시,중구영도구,중앙동,관내사전투표,기권자수,5\n"
+
+	recs, err := ParseResults([]byte(csvText))
+	if err != nil {
+		t.Fatalf("ParseResults: %v", err)
+	}
+	if len(recs) != 2 {
+		t.Fatalf("got %d records, want 2 (same-name booths must not merge)", len(recs))
+	}
+	a := recs[0]
+	if a.Electorate != 2512 || a.Votes != 2500 || a.Invalid != 10 || a.Abstention != 12 {
+		t.Errorf("metrics mismapped: %+v", a)
+	}
+	if len(a.Candidates) != 2 {
+		t.Fatalf("got %d candidates, want 2", len(a.Candidates))
+	}
+	if a.Candidates[0].Party != "더불어민주당" || a.Candidates[0].Name != "곽상언" || a.Candidates[0].Votes != 1400 {
+		t.Errorf("candidate[0] = %+v", a.Candidates[0])
+	}
+	if a.Candidates[1].Party != "무소속" || a.Candidates[1].Name != "고주환" {
+		t.Errorf("independent split wrong: %+v", a.Candidates[1])
+	}
+	if recs[1].Electorate != 655 {
+		t.Errorf("second unit electorate = %d, want 655", recs[1].Electorate)
+	}
+}
+
+func TestParseResultsEUCKR(t *testing.T) {
+	utf8CSV := "시도명,선거구명,법정읍면동명,투표구명,후보자,득표수\n" +
+		"서울특별시,종로구,청운효자동,제1투,선거인수,100\n" +
+		"서울특별시,종로구,청운효자동,제1투,국민의힘 최재형,55\n"
+	euckr, err := io.ReadAll(transform.NewReader(strings.NewReader(utf8CSV), korean.EUCKR.NewEncoder()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recs, err := ParseResults(euckr)
+	if err != nil {
+		t.Fatalf("ParseResults(EUC-KR): %v", err)
+	}
+	if len(recs) != 1 || recs[0].Town != "청운효자동" || recs[0].Candidates[0].Name != "최재형" {
+		t.Errorf("EUC-KR decode/parse wrong: %+v", recs)
+	}
+}
+
+func TestParseResultsRejectsUnknownLayout(t *testing.T) {
+	if _, err := ParseResults([]byte("a,b,c\n1,2,3\n")); err == nil {
+		t.Error("expected error for non-개표결과 layout")
 	}
 }
 
