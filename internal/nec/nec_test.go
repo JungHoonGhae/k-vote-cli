@@ -642,6 +642,73 @@ func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
 	}
 }
 
+// TestParseResultsXLSXMarkerInEupmyeondong locks the real-data layout where the
+// vote-type marker 합계/거소투표/관외사전투표 lives in the 읍면동명 column (with 구분
+// blank), while 소계/관내사전투표/투표구 live in 구분. The marker is always the
+// rightmost non-empty dimension. Reading only the 구분 column misclassified the
+// 합계/거소/관외사전 rows as 본투표 leaves — this test guards against regression.
+func TestParseResultsXLSXMarkerInEupmyeondong(t *testing.T) {
+	f := excelize.NewFile()
+	const s = "시·도지사"
+	f.SetSheetName(f.GetSheetName(0), s)
+	rows := [][]any{
+		{"선거구명", "구시군명", "읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		{"", "", "", "", "", "", "후보1", "후보2", "", "", ""},
+		{"서울특별시", "종로구", "", "", "", "", "A당\n김갑", "B당\n이을", "", "", ""},
+		{"서울특별시", "종로구", "합계", "", "1000", "800", "400", "380", "780", "20", "200"},     // marker in 읍면동명
+		{"서울특별시", "종로구", "거소투표", "", "10", "8", "4", "4", "8", "0", "2"},                // marker in 읍면동명
+		{"서울특별시", "종로구", "관외사전투표", "", "100", "90", "50", "38", "88", "2", "10"},        // marker in 읍면동명
+		{"서울특별시", "종로구", "청운효자동", "소계", "500", "400", "200", "190", "390", "10", "100"}, // marker in 구분
+		{"서울특별시", "종로구", "청운효자동", "관내사전투표", "200", "180", "90", "88", "178", "2", "20"},
+		{"서울특별시", "종로구", "청운효자동", "제1투", "300", "220", "110", "102", "212", "8", "80"},
+	}
+	for i, r := range rows {
+		c, _ := excelize.CoordinatesToCellName(1, i+1)
+		f.SetSheetRow(s, c, &r)
+	}
+	buf, _ := f.WriteToBuffer()
+	recs, err := ParseResultsXLSX(buf.Bytes())
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	// 6 data rows (합계/거소/관외사전/소계/관내사전/제1투); candidate-def row excluded.
+	got := map[string]struct {
+		vt  string
+		agg bool
+	}{}
+	for _, r := range recs {
+		marker := r.Dimensions[len(r.Dimensions)-1].Value
+		if marker == "" {
+			marker = r.Dimensions[len(r.Dimensions)-2].Value // 합계/거소/관외사전: 구분 blank
+		}
+		got[marker] = struct {
+			vt  string
+			agg bool
+		}{r.VoteType, r.Aggregate}
+	}
+	want := map[string]struct {
+		vt  string
+		agg bool
+	}{
+		"합계":     {"", true},
+		"거소투표":   {"거소", false},
+		"관외사전투표": {"관외사전", false},
+		"소계":     {"", true},
+		"관내사전투표": {"관내사전", false},
+		"제1투":    {"본투표", false},
+	}
+	for marker, w := range want {
+		g, ok := got[marker]
+		if !ok {
+			t.Errorf("marker %q not parsed", marker)
+			continue
+		}
+		if g.vt != w.vt || g.agg != w.agg {
+			t.Errorf("marker %q: got (vt=%q,agg=%v), want (vt=%q,agg=%v)", marker, g.vt, g.agg, w.vt, w.agg)
+		}
+	}
+}
+
 // TestParseResultsXLSXCandidateRedefinition verifies the load-bearing
 // "candidate header refreshes per 선거구" behavior: each 선거구 block carries
 // its OWN candidate-definition row, so a later block's data rows must use the

@@ -130,16 +130,6 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 			dimLabels[i] = labelAt(i)
 		}
 
-		// Find index of 구분 within dimension columns (used for vote-type derivation).
-		// Use the same space-normalisation as the rest of the label comparisons (labelNorm).
-		gubunDimIdx := -1 // 구분
-		for i := 0; i < electIdx; i++ {
-			if labelNorm(i) == "구분" {
-				gubunDimIdx = i
-				break
-			}
-		}
-
 		// candHeaders tracks the running candidate header (party, name) per column.
 		// Initialized to nil; nil entry means that column slot has no candidate.
 		candHeaders := make([]*candHeader, candEnd-candStart)
@@ -228,12 +218,20 @@ func ParseResultsXLSX(raw []byte) ([]ElectionResult, error) {
 				}
 			}
 
-			// Derive vote type and aggregate flag from 구분 dimension.
-			gubun := ""
-			if gubunDimIdx >= 0 {
-				gubun = cellAt(row, gubunDimIdx)
+			// Derive vote type and aggregate from the vote-type marker, which is the
+			// LAST non-empty dimension value. Sheet types place the marker in
+			// different columns — 합계/거소투표/관외사전투표 land in 읍면동명 (with 구분
+			// blank), while 소계/관내사전투표/투표구 land in 구분 — but in every case it
+			// is the rightmost non-empty dimension. (Reading only the 구분-labelled
+			// column misclassified 합계/거소/관외사전 as 본투표 leaves.)
+			marker := ""
+			for i := len(dims) - 1; i >= 0; i-- {
+				if v := strings.TrimSpace(dims[i].Value); v != "" {
+					marker = v
+					break
+				}
 			}
-			voteType, aggregate := deriveVoteType(gubun)
+			voteType, aggregate := deriveVoteType(marker)
 
 			// Collect candidates.
 			var candidates []CandidateVote
