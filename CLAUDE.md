@@ -64,6 +64,7 @@ internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (packag
   list.go           목록 파서 (.row.th 헤더 → .row.tr 행) + 검색/기간 필터
   filters.go        필터 코드 매핑(searchCnd/searchTime) + 선거구분(elections) 스크래퍼
   detail.go         view.do 상세 파서 (메타 테이블 + 첨부; onclick·href 두 형태)
+  composition.go    Detail.Fields → 표본 구성 교차표(SampleComposition) 파생. 중립.
   download.go       FileDown.do 다운로드 + 파일명 인코딩 복구
   bulk.go           data 게시판 누적 마스터 엑셀(excelize) → 정규화 PollRecord
   agency.go         onvy 조사기관 등록/취소 현황 파서
