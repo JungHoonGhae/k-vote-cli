@@ -35,9 +35,11 @@ const DefaultDelay = 700 * time.Millisecond
 // DefaultOrg scopes dataset searches to the NEC by publisher name.
 const DefaultOrg = "중앙선거관리위원회"
 
-// Client is a rate-limited HTTP client for data.go.kr NEC file datasets.
+// Client is a rate-limited HTTP client for NEC file datasets. It speaks to two
+// backends: data.go.kr (default) and the NEC open portal data.nec.go.kr.
 type Client struct {
-	baseURL   string
+	baseURL   string // data.go.kr
+	opBaseURL string // data.nec.go.kr 개방포털
 	userAgent string
 	delay     time.Duration
 	http      *http.Client
@@ -49,8 +51,13 @@ type Client struct {
 // Option configures a Client.
 type Option func(*Client)
 
-// WithBaseURL overrides the portal root (useful for tests).
+// WithBaseURL overrides the data.go.kr root (useful for tests).
 func WithBaseURL(u string) Option { return func(c *Client) { c.baseURL = strings.TrimRight(u, "/") } }
+
+// WithOpenPortalBaseURL overrides the data.nec.go.kr open-portal root (tests).
+func WithOpenPortalBaseURL(u string) Option {
+	return func(c *Client) { c.opBaseURL = strings.TrimRight(u, "/") }
+}
 
 // WithUserAgent overrides the User-Agent header.
 func WithUserAgent(ua string) Option { return func(c *Client) { c.userAgent = ua } }
@@ -71,6 +78,7 @@ func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h
 func New(opts ...Option) *Client {
 	c := &Client{
 		baseURL:   DefaultBaseURL,
+		opBaseURL: OpenPortalBaseURL,
 		userAgent: DefaultUserAgent,
 		delay:     DefaultDelay,
 		http:      &http.Client{Timeout: 120 * time.Second}, // dataset files can be large

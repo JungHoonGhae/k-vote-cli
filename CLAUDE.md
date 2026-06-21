@@ -57,6 +57,7 @@ internal/nec/       NEC provider — data.go.kr 공개 파일 데이터 클라�
   election.go       CSV·XLSX 공통 스키마(ElectionResult) + voteType/aggregate 파생
   xlsx.go           XLSX 멀티시트 wide→long 파서 (앵커 라벨 기반, 선거별 손매핑 없음)
   aggregate.go      투표구 레코드 → 다단계 집계(AggLevel) + 파생값(투표율·득표율·유효표). 중립.
+  openportal.go     data.nec.go.kr 개방포털 소스 (datasets/files/download). robots 허용·키리스.
   filename.go       Content-Disposition 파일명 인코딩 복구
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)

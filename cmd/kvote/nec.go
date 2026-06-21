@@ -32,18 +32,27 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 }
 
 func necDatasetsCmd() *cobra.Command {
-	var query, org string
+	var query, org, source string
 	var page int
 	c := &cobra.Command{
 		Use:   "datasets",
 		Short: "선관위 공개 파일 데이터 검색 (개표결과·투표율 등)",
-		Long: `data.go.kr 에서 선관위가 공개한 파일 데이터를 검색합니다.
-검색어 없이 실행하면 선관위 데이터셋을 나열합니다. 각 항목의 publicDataPk 를
-` + "`nec pull <publicDataPk>`" + ` 에 넘겨 다운로드합니다.`,
+		Long: `선관위가 공개한 파일 데이터를 검색합니다. 두 소스 지원:
+  --source datagokr  (기본) data.go.kr — 항목 키는 publicDataPk
+  --source openportal      data.nec.go.kr 개방포털 — 항목 키는 dataId,
+                           투표율·당선인·후보자 등 더 많은 종류 + XLSX 직접 다운로드
+검색어 없이 실행하면 나열합니다. 항목 키를 ` + "`nec pull`" + ` 에 넘겨 다운로드합니다.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			format, err := resolveFormat()
 			if err != nil {
 				return err
+			}
+			if source == string(nec.SourceOpenPortal) {
+				ds, err := newNECClient().OpenPortalDatasets(context.Background(), query)
+				if err != nil {
+					return err
+				}
+				return renderOPDatasets(cmd, format, ds)
 			}
 			ds, err := newNECClient().Datasets(context.Background(), nec.SearchOptions{
 				Keyword: query, Org: org, Page: page,
@@ -56,24 +65,55 @@ func necDatasetsCmd() *cobra.Command {
 	}
 	f := c.Flags()
 	f.StringVarP(&query, "query", "q", "", "검색어 (예: 개표결과, 투표율, 대통령선거)")
-	f.StringVar(&org, "org", nec.DefaultOrg, "발행 기관명")
-	f.IntVar(&page, "page", 1, "페이지 번호")
+	f.StringVar(&org, "org", nec.DefaultOrg, "발행 기관명 (datagokr 전용)")
+	f.IntVar(&page, "page", 1, "페이지 번호 (datagokr 전용)")
+	f.StringVar(&source, "source", string(nec.SourceDataGoKr), "소스: datagokr | openportal")
 	return c
 }
 
 func necPullCmd() *cobra.Command {
-	var outDir string
+	var outDir, source string
 	c := &cobra.Command{
-		Use:   "pull <publicDataPk>",
+		Use:   "pull <publicDataPk|dataId>",
 		Short: "파일 데이터 다운로드 (CSV/XLSX 원본)",
-		Args:  cobra.ExactArgs(1),
+		Long: `파일 데이터를 다운로드합니다.
+  --source datagokr  (기본) data.go.kr — 인자는 publicDataPk
+  --source openportal      data.nec.go.kr 개방포털 — 인자는 dataId.
+                           직접 호스팅 파일(예: 대선 XLSX)을 받습니다. 일부 데이터셋(예:
+                           지방선거)은 개방포털이 data.go.kr 로 라우팅하므로 그 경우는
+                           datagokr 소스를 쓰세요.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newNECClient()
+			ctx := context.Background()
 			dir := outDir
 			if dir == "" {
 				dir = "downloads/nec"
 			}
-			path, err := client.Download(context.Background(), args[0], dir)
+			if source == string(nec.SourceOpenPortal) {
+				files, err := client.OpenPortalFiles(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				if len(files) == 0 {
+					return fmt.Errorf("개방포털 dataId=%s 에 직접 다운로드 파일이 없습니다 (data.go.kr 로 라우팅되는 데이터셋일 수 있음 — --source datagokr 시도)", args[0])
+				}
+				var failed int
+				for _, f := range files {
+					path, err := client.OpenPortalDownload(ctx, f.AttachFileID, dir)
+					if err != nil {
+						failed++
+						fmt.Fprintf(cmd.ErrOrStderr(), "  ✗ %s: %v\n", f.Name, err)
+						continue
+					}
+					fmt.Fprintf(cmd.OutOrStdout(), "  ✓ %s\n", path)
+				}
+				if failed > 0 {
+					return fmt.Errorf("%d/%d 파일 실패", failed, len(files))
+				}
+				return nil
+			}
+			path, err := client.Download(ctx, args[0], dir)
 			if err != nil {
 				return err
 			}
@@ -82,6 +122,7 @@ func necPullCmd() *cobra.Command {
 		},
 	}
 	c.Flags().StringVarP(&outDir, "out", "o", "", "저장 디렉터리 (기본: downloads/nec)")
+	c.Flags().StringVar(&source, "source", string(nec.SourceDataGoKr), "소스: datagokr | openportal")
 	return c
 }
 
@@ -279,6 +320,25 @@ func renderResults(cmd *cobra.Command, format output.Format, recs []nec.ResultRe
 			})
 		}
 		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+func renderOPDatasets(cmd *cobra.Command, format output.Format, ds []nec.OPDataset) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), ds)
+	case output.JSONL:
+		items := make([]any, len(ds))
+		for i := range ds {
+			items[i] = ds[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		rows := make([][]string, 0, len(ds))
+		for _, d := range ds {
+			rows = append(rows, []string{d.DataID, d.Title})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), []string{"dataId", "title"}, rows)
 	}
 }
 
