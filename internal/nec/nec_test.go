@@ -178,6 +178,23 @@ func TestParseResultsRejectsUnknownLayout(t *testing.T) {
 	}
 }
 
+func TestClassifyVoteType(t *testing.T) {
+	cases := []struct {
+		town, booth, want string
+	}{
+		{"청운효자동", "제1투", "본투표"},
+		{"청운효자동", "관내사전투표", "관내사전"},
+		{"관외사전투표", "", "관외사전"},
+		{"거소·선상투표", "", "거소선상"},
+		{"중앙동", "", "본투표"},
+	}
+	for _, c := range cases {
+		if got := classifyVoteType(c.town, c.booth); got != c.want {
+			t.Errorf("classifyVoteType(%q,%q) = %q, want %q", c.town, c.booth, got, c.want)
+		}
+	}
+}
+
 func TestDownload(t *testing.T) {
 	c := testClient(t, necServer(t).URL)
 	path, err := c.Download(context.Background(), "15025527", t.TempDir())
