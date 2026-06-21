@@ -150,6 +150,27 @@ func classifyVoteType(town, booth string) string {
 	}
 }
 
+// ToElectionResult maps a CSV-derived ResultRecord into the common schema. CSV
+// rows are all leaves (no 합계/소계), so Aggregate is always false.
+func (r ResultRecord) ToElectionResult() ElectionResult {
+	return ElectionResult{
+		Race: "",
+		Dimensions: []Dimension{
+			{"시도명", r.Sido},
+			{"선거구명", r.District},
+			{"법정읍면동명", r.Town},
+			{"투표구명", r.Booth},
+		},
+		VoteType:   r.VoteType,
+		Aggregate:  false,
+		Electorate: r.Electorate,
+		Votes:      r.Votes,
+		Invalid:    r.Invalid,
+		Abstention: r.Abstention,
+		Candidates: r.Candidates,
+	}
+}
+
 // decodeKorean returns text decoded as UTF-8 when valid, otherwise from EUC-KR
 // (a superset of which, CP949, is what NEC 개표결과 CSVs use).
 func decodeKorean(raw []byte) string {

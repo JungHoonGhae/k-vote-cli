@@ -578,6 +578,24 @@ func TestParseResultsXLSXGyo(t *testing.T) {
 	}
 }
 
+func TestResultRecordToElectionResult(t *testing.T) {
+	r := ResultRecord{
+		Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "관내사전투표",
+		VoteType: "관내사전", Electorate: 100, Votes: 90, Invalid: 2, Abstention: 10,
+		Candidates: []CandidateVote{{"A당", "김갑", 50}},
+	}
+	e := r.ToElectionResult()
+	if e.Dim("시도명") != "서울" || e.Dim("선거구명") != "종로구" || e.Dim("법정읍면동명") != "청운효자동" || e.Dim("투표구명") != "관내사전투표" {
+		t.Errorf("dimensions wrong: %+v", e.Dimensions)
+	}
+	if e.VoteType != "관내사전" || e.Aggregate {
+		t.Errorf("voteType/aggregate wrong: %q %v", e.VoteType, e.Aggregate)
+	}
+	if e.Electorate != 100 || len(e.Candidates) != 1 || e.Candidates[0].Name != "김갑" {
+		t.Errorf("fields wrong: %+v", e)
+	}
+}
+
 func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
 	f := excelize.NewFile()
 	f.SetSheetName(f.GetSheetName(0), "엉뚱시트")
