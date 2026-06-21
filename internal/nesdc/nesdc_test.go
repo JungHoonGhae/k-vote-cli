@@ -338,3 +338,58 @@ func TestSampleCompositionOfNoBlock(t *testing.T) {
 		t.Errorf("expected nil when no composition block, got %+v", sc)
 	}
 }
+
+// TestSampleCompositionFromFixture is an end-to-end test that verifies
+// SampleCompositionOf works on a real parsed detail page (results_view.html),
+// not just an inline []Field fixture. A regression in detail.go's Fields
+// parsing or composition.go's block detection would be caught here.
+func TestSampleCompositionFromFixture(t *testing.T) {
+	srv := fixtureServer(t)
+	c := testClient(t, srv.URL)
+	board, _ := BoardByName("results")
+
+	d, err := c.Detail(context.Background(), board, "19366")
+	if err != nil {
+		t.Fatalf("Detail: %v", err)
+	}
+
+	sc := SampleCompositionOf(d)
+	if sc == nil {
+		t.Fatal("SampleCompositionOf returned nil: fixture must contain a 표본 구성 block")
+	}
+
+	// The fixture has a 전체 row (Total must be non-nil with positive counts).
+	if sc.Total == nil {
+		t.Error("expected sc.Total != nil (fixture has a 전체 row)")
+	} else if sc.Total.Completed <= 0 {
+		t.Errorf("sc.Total.Completed = %d, want > 0", sc.Total.Completed)
+	}
+
+	// There must be at least one crosstab (성별, 연령대별, 지역별 are in the fixture).
+	if len(sc.Crosstabs) < 1 {
+		t.Fatalf("len(sc.Crosstabs) = %d, want >= 1", len(sc.Crosstabs))
+	}
+
+	// Every crosstab must have a non-empty Dimension and at least one Cell with
+	// Completed > 0. We assert structure and positivity, not specific numbers,
+	// so the test stays robust if fixture content is refreshed.
+	for i, ct := range sc.Crosstabs {
+		if ct.Dimension == "" {
+			t.Errorf("Crosstab[%d] has empty Dimension", i)
+		}
+		if len(ct.Cells) == 0 {
+			t.Errorf("Crosstab[%d] (%s) has no cells", i, ct.Dimension)
+			continue
+		}
+		hasPositive := false
+		for _, cell := range ct.Cells {
+			if cell.Completed > 0 {
+				hasPositive = true
+				break
+			}
+		}
+		if !hasPositive {
+			t.Errorf("Crosstab[%d] (%s): no cell has Completed > 0", i, ct.Dimension)
+		}
+	}
+}
