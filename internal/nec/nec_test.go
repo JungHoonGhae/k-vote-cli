@@ -3,6 +3,7 @@ package nec
 import (
 	"context"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -178,6 +179,23 @@ func TestParseResultsRejectsUnknownLayout(t *testing.T) {
 	}
 }
 
+func TestClassifyVoteType(t *testing.T) {
+	cases := []struct {
+		town, booth, want string
+	}{
+		{"청운효자동", "제1투", "본투표"},
+		{"청운효자동", "관내사전투표", "관내사전"},
+		{"관외사전투표", "", "관외사전"},
+		{"거소·선상투표", "", "거소선상"},
+		{"중앙동", "", "본투표"},
+	}
+	for _, c := range cases {
+		if got := classifyVoteType(c.town, c.booth); got != c.want {
+			t.Errorf("classifyVoteType(%q,%q) = %q, want %q", c.town, c.booth, got, c.want)
+		}
+	}
+}
+
 func TestDownload(t *testing.T) {
 	c := testClient(t, necServer(t).URL)
 	path, err := c.Download(context.Background(), "15025527", t.TempDir())
@@ -186,5 +204,191 @@ func TestDownload(t *testing.T) {
 	}
 	if got := filepath.Base(path); got != "중앙선거관리위원회_국회의원선거 개표결과_20240410.csv" {
 		t.Errorf("filename = %q", got)
+	}
+}
+
+func sampleRecs() []ResultRecord {
+	return []ResultRecord{
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 1000, Votes: 800, Invalid: 20, Abstention: 200,
+			Candidates: []CandidateVote{{"A당", "김갑", 500}, {"B당", "이을", 280}}},
+		{Sido: "서울", District: "종로구", Town: "삼청동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 500, Votes: 400, Invalid: 10, Abstention: 100,
+			Candidates: []CandidateVote{{"A당", "김갑", 200}, {"B당", "이을", 190}}},
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "관내사전투표", VoteType: "관내사전",
+			Electorate: 300, Votes: 290, Invalid: 0, Abstention: 10,
+			Candidates: []CandidateVote{{"A당", "김갑", 100}, {"B당", "이을", 190}}},
+	}
+}
+
+func TestAggregateSgg(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSgg, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 선거구", len(out))
+	}
+	r := out[0]
+	if r.Sido != "서울" || r.District != "종로구" || r.Town != "" {
+		t.Errorf("dimensions wrong: %+v", r)
+	}
+	if r.Electorate != 1800 || r.Votes != 1490 || r.Invalid != 30 || r.Abstention != 310 {
+		t.Errorf("metric sums wrong: %+v", r)
+	}
+	if r.ValidVotes != 1460 { // 1490 - 30
+		t.Errorf("validVotes = %d, want 1460", r.ValidVotes)
+	}
+	if r.Turnout < 0.827 || r.Turnout > 0.828 { // 1490/1800
+		t.Errorf("turnout = %v, want ~0.8278", r.Turnout)
+	}
+	if len(r.Candidates) != 2 {
+		t.Fatalf("got %d candidates, want 2", len(r.Candidates))
+	}
+	if r.Candidates[0].Party != "A당" || r.Candidates[0].Votes != 800 { // 500+200+100
+		t.Errorf("candidate[0] = %+v, want A당 800", r.Candidates[0])
+	}
+	if s := r.Candidates[0].Share; s < 0.547 || s > 0.549 { // 800/1460
+		t.Errorf("share = %v, want ~0.5479", s)
+	}
+}
+
+func TestAggregateByVoteType(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSgg, true)
+	if len(out) != 2 {
+		t.Fatalf("got %d groups, want 2 (본투표 + 관내사전)", len(out))
+	}
+	byType := map[string]AggregatedRecord{}
+	for _, r := range out {
+		byType[r.VoteType] = r
+	}
+	if byType["본투표"].Votes != 1200 { // 800+400
+		t.Errorf("본투표 votes = %d, want 1200", byType["본투표"].Votes)
+	}
+	if byType["관내사전"].Votes != 290 {
+		t.Errorf("관내사전 votes = %d, want 290", byType["관내사전"].Votes)
+	}
+}
+
+func TestAggregateSidoDropsCandidates(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggSido, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 시도", len(out))
+	}
+	r := out[0]
+	if r.Sido != "서울" || r.District != "" {
+		t.Errorf("sido dims wrong: %+v", r)
+	}
+	if len(r.Candidates) != 0 {
+		t.Errorf("sido level must drop candidates, got %d", len(r.Candidates))
+	}
+	if r.Votes != 1490 {
+		t.Errorf("metrics still summed: votes = %d, want 1490", r.Votes)
+	}
+}
+
+// TestAggregateNational verifies that AggNational collapses all records into a
+// single group with empty spatial dimensions and no candidates.
+// sampleRecs totals: Electorate=1000+500+300=1800, Votes=800+400+290=1490,
+// Invalid=20+10+0=30, Abstention=200+100+10=310.
+func TestAggregateNational(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggNational, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1 national group", len(out))
+	}
+	r := out[0]
+	// All spatial dimensions must be empty at national level.
+	if r.Sido != "" || r.District != "" || r.Town != "" {
+		t.Errorf("spatial dims must be empty at national level: Sido=%q District=%q Town=%q", r.Sido, r.District, r.Town)
+	}
+	// Candidates are not meaningful across different districts — must be empty.
+	if len(r.Candidates) != 0 {
+		t.Errorf("national level must have no candidates, got %d", len(r.Candidates))
+	}
+	// Metric sums across all three records in sampleRecs.
+	if r.Electorate != 1800 {
+		t.Errorf("Electorate = %d, want 1800", r.Electorate)
+	}
+	if r.Votes != 1490 {
+		t.Errorf("Votes = %d, want 1490", r.Votes)
+	}
+	if r.Invalid != 30 {
+		t.Errorf("Invalid = %d, want 30", r.Invalid)
+	}
+	if r.Abstention != 310 {
+		t.Errorf("Abstention = %d, want 310", r.Abstention)
+	}
+}
+
+// TestAggregateTown verifies that AggTown groups by 읍면동, merging different
+// booths within the same town. sampleRecs has two towns:
+//   - 청운효자동: records 0 (본투표) + 2 (관내사전) → Electorate=1300, Votes=1090, Invalid=20
+//   - 삼청동:    record 1 only → Electorate=500, Votes=400
+//
+// Candidates must be kept at town level (len > 0).
+func TestAggregateTown(t *testing.T) {
+	out := Aggregate(sampleRecs(), AggTown, false)
+	// Two distinct towns: 청운효자동 and 삼청동.
+	if len(out) != 2 {
+		t.Fatalf("got %d groups, want 2 town groups", len(out))
+	}
+	// Build a lookup by town name for order-independent assertions.
+	byTown := map[string]AggregatedRecord{}
+	for _, r := range out {
+		byTown[r.Town] = r
+	}
+	chung, ok := byTown["청운효자동"]
+	if !ok {
+		t.Fatal("청운효자동 group missing")
+	}
+	// Records 0 and 2 merged: Electorate=1000+300=1300, Votes=800+290=1090, Invalid=20+0=20.
+	if chung.Electorate != 1300 {
+		t.Errorf("청운효자동 Electorate = %d, want 1300", chung.Electorate)
+	}
+	if chung.Votes != 1090 {
+		t.Errorf("청운효자동 Votes = %d, want 1090", chung.Votes)
+	}
+	if chung.Invalid != 20 {
+		t.Errorf("청운효자동 Invalid = %d, want 20", chung.Invalid)
+	}
+	// Candidates must be populated at town level.
+	if len(chung.Candidates) == 0 {
+		t.Error("청운효자동 must have candidates at town level")
+	}
+	// 삼청동 group corresponds to record 1 only.
+	sam, ok := byTown["삼청동"]
+	if !ok {
+		t.Fatal("삼청동 group missing")
+	}
+	if sam.Electorate != 500 || sam.Votes != 400 {
+		t.Errorf("삼청동 metrics wrong: Electorate=%d Votes=%d, want 500/400", sam.Electorate, sam.Votes)
+	}
+}
+
+// TestAggregateZeroElectorateNoNaN verifies that a record with Electorate==0
+// and all-zero votes produces Turnout==0 and candidate Share==0 — not NaN —
+// since the implementation guards the division by zero.
+func TestAggregateZeroElectorateNoNaN(t *testing.T) {
+	recs := []ResultRecord{
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 0, Votes: 0, Invalid: 0, Abstention: 0,
+			Candidates: []CandidateVote{{"A당", "김갑", 0}}},
+	}
+	out := Aggregate(recs, AggSgg, false)
+	if len(out) != 1 {
+		t.Fatalf("got %d groups, want 1", len(out))
+	}
+	r := out[0]
+	if math.IsNaN(r.Turnout) {
+		t.Errorf("Turnout must not be NaN when Electorate==0, got %v", r.Turnout)
+	}
+	if r.Turnout != 0 {
+		t.Errorf("Turnout = %v, want 0", r.Turnout)
+	}
+	if len(r.Candidates) != 1 {
+		t.Fatalf("got %d candidates, want 1", len(r.Candidates))
+	}
+	if math.IsNaN(r.Candidates[0].Share) {
+		t.Errorf("candidate Share must not be NaN when ValidVotes==0, got %v", r.Candidates[0].Share)
+	}
+	if r.Candidates[0].Share != 0 {
+		t.Errorf("candidate Share = %v, want 0", r.Candidates[0].Share)
 	}
 }

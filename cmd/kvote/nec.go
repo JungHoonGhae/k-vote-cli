@@ -85,7 +85,8 @@ func necPullCmd() *cobra.Command {
 }
 
 func necResultsCmd() *cobra.Command {
-	var file string
+	var file, aggregate string
+	var byVoteType bool
 	c := &cobra.Command{
 		Use:   "results <publicDataPk>",
 		Short: "개표결과 CSV를 투표구별 정규화 레코드로 출력",
@@ -129,11 +130,55 @@ func necResultsCmd() *cobra.Command {
 				return err
 			}
 			fmt.Fprintf(cmd.ErrOrStderr(), "정규화 완료: %d개 투표구\n", len(recs))
-			return renderResults(cmd, format, recs)
+
+			level, ok := parseAggLevel(aggregate)
+			if !ok {
+				return fmt.Errorf("알 수 없는 --aggregate 값 %q (none|town|sgg|sido|national)", aggregate)
+			}
+			if level == nec.AggNone {
+				return renderResults(cmd, format, recs)
+			}
+			aggs := nec.Aggregate(recs, level, byVoteType)
+			fmt.Fprintf(cmd.ErrOrStderr(), "집계 완료: %d개 그룹 (level=%s)\n", len(aggs), aggregate)
+			return renderAggregated(cmd, format, aggs)
 		},
 	}
 	c.Flags().StringVar(&file, "file", "", "이미 받은 개표결과 CSV 경로 (다운로드 생략)")
+	c.Flags().StringVar(&aggregate, "aggregate", "none", "집계 단위: none|town|sgg|sido|national")
+	c.Flags().BoolVar(&byVoteType, "by-votetype", false, "투표유형(본/관내사전/관외사전/거소선상)으로 분리 (집계와 함께)")
 	return c
+}
+
+func parseAggLevel(s string) (nec.AggLevel, bool) {
+	switch nec.AggLevel(s) {
+	case nec.AggNone, nec.AggTown, nec.AggSgg, nec.AggSido, nec.AggNational:
+		return nec.AggLevel(s), true
+	}
+	return "", false
+}
+
+func renderAggregated(cmd *cobra.Command, format output.Format, recs []nec.AggregatedRecord) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"level", "시도", "선거구", "읍면동", "투표유형", "선거인수", "투표수", "투표율", "후보수"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{
+				r.Level, r.Sido, r.District, r.Town, r.VoteType,
+				fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes),
+				fmt.Sprintf("%.1f%%", r.Turnout*100), fmt.Sprint(len(r.Candidates)),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
 }
 
 func renderResults(cmd *cobra.Command, format output.Format, recs []nec.ResultRecord) error {
@@ -147,11 +192,11 @@ func renderResults(cmd *cobra.Command, format output.Format, recs []nec.ResultRe
 		}
 		return output.WriteJSONL(cmd.OutOrStdout(), items)
 	default:
-		headers := []string{"시도", "선거구", "읍면동", "투표구", "선거인수", "투표수", "무효", "기권", "후보수"}
+		headers := []string{"시도", "선거구", "읍면동", "투표구", "투표유형", "선거인수", "투표수", "무효", "기권", "후보수"}
 		rows := make([][]string, 0, len(recs))
 		for _, r := range recs {
 			rows = append(rows, []string{
-				r.Sido, r.District, r.Town, r.Booth,
+				r.Sido, r.District, r.Town, r.Booth, r.VoteType,
 				fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes), fmt.Sprint(r.Invalid),
 				fmt.Sprint(r.Abstention), fmt.Sprint(len(r.Candidates)),
 			})

@@ -29,6 +29,7 @@ type ResultRecord struct {
 	District   string          `json:"district"`
 	Town       string          `json:"town"`
 	Booth      string          `json:"booth,omitempty"`
+	VoteType   string          `json:"voteType"`
 	Electorate int             `json:"electorate"`
 	Votes      int             `json:"votes"`
 	Invalid    int             `json:"invalid"`
@@ -88,7 +89,7 @@ func ParseResults(raw []byte) ([]ResultRecord, error) {
 			if cur != nil {
 				out = append(out, *cur)
 			}
-			cur = &ResultRecord{Sido: sido, District: dist, Town: town, Booth: booth}
+			cur = &ResultRecord{Sido: sido, District: dist, Town: town, Booth: booth, VoteType: classifyVoteType(town, booth)}
 		}
 
 		if field, ok := metricLabels[strings.ReplaceAll(label, " ", "")]; ok {
@@ -128,6 +129,25 @@ func atoiLoose(s string) int {
 	s = strings.TrimSpace(strings.ReplaceAll(s, ",", ""))
 	n, _ := strconv.Atoi(s)
 	return n
+}
+
+// classifyVoteType labels a polling unit by the structural meaning already
+// present in the source columns. It is a neutral label, not a judgment:
+//   - town "거소·선상투표"      → 거소선상
+//   - town "관외사전투표"        → 관외사전
+//   - booth "관내사전투표"       → 관내사전
+//   - otherwise (real 읍면동/투표구) → 본투표
+func classifyVoteType(town, booth string) string {
+	switch {
+	case town == "거소·선상투표":
+		return "거소선상"
+	case town == "관외사전투표":
+		return "관외사전"
+	case booth == "관내사전투표":
+		return "관내사전"
+	default:
+		return "본투표"
+	}
 }
 
 // decodeKorean returns text decoded as UTF-8 when valid, otherwise from EUC-KR

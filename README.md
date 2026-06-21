@@ -87,6 +87,9 @@ kvote nec datasets -q 개표결과 -f table              # 선관위 공개 데�
 kvote nec pull 15025527 -o ./downloads               # 제22대 총선 개표결과 CSV 원본
 kvote nec results 15025527 -f jsonl > votes.jsonl    # 투표구별 정규화 (후보 득표 포함)
 kvote nec results --file ./downloads/*.csv -f jsonl  # 이미 받은 CSV 파싱 (재다운로드 X)
+# 집계 뷰 (중립 파라미터 — 비교·판단은 소비자/AI 에이전트가)
+kvote nec results 15025527 --aggregate sgg --by-votetype -f jsonl   # 선거구×투표유형
+kvote nec results 15025527 --aggregate sido -f table                # 시도별 투표율
 ```
 
 ### 필터 (results 게시판)
