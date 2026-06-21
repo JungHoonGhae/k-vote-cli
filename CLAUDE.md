@@ -54,6 +54,7 @@ internal/nec/       NEC provider — data.go.kr 공개 파일 데이터 클라�
   datasets.go       선관위 파일 데이터 검색 파서 (selectDataSetList.do, dt 포맷/제목 분리)
   download.go       uddi 조회 → selectFileDataDownload.do(atchFileId) → fileDownload.do
   results.go        개표결과 CSV(EUC-KR) long-format → 투표구별 ResultRecord 정규화
+  aggregate.go      투표구 레코드 → 다단계 집계(AggLevel) + 파생값(투표율·득표율·유효표). 중립.
   filename.go       Content-Disposition 파일명 인코딩 복구
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)
