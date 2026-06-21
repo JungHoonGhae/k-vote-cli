@@ -131,6 +131,7 @@ func nesdcListCmd() *cobra.Command {
 
 func nesdcShowCmd() *cobra.Command {
 	var boardName string
+	var crosstab bool
 	c := &cobra.Command{
 		Use:   "show <nttId>",
 		Short: "단건 상세 메타데이터 조회",
@@ -148,10 +149,19 @@ func nesdcShowCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if crosstab {
+				sc := nesdc.SampleCompositionOf(d)
+				if sc == nil {
+					fmt.Fprintln(cmd.ErrOrStderr(), "표본 구성 교차표를 찾지 못했습니다.")
+					return nil
+				}
+				return renderComposition(cmd, format, sc)
+			}
 			return renderDetail(cmd, format, d)
 		},
 	}
 	c.Flags().StringVar(&boardName, "board", "results", "게시판 이름")
+	c.Flags().BoolVar(&crosstab, "crosstab", false, "표본 구성 교차표(성별·연령·지역 × 완료·가중)만 출력")
 	return c
 }
 
@@ -481,6 +491,32 @@ func renderDetail(cmd *cobra.Command, format output.Format, d *nesdc.Detail) err
 		for _, a := range d.Attachments {
 			fmt.Fprintf(w, "  - %s\n", a.Name)
 		}
+	}
+	return nil
+}
+
+func renderComposition(cmd *cobra.Command, format output.Format, sc *nesdc.SampleComposition) error {
+	if format != output.Table {
+		return output.WriteJSON(cmd.OutOrStdout(), sc)
+	}
+	w := cmd.OutOrStdout()
+	rows := make([][]string, 0)
+	if sc.Total != nil {
+		rows = append(rows, []string{"전체", "", fmt.Sprint(sc.Total.Completed), fmt.Sprint(sc.Total.Weighted)})
+	}
+	for _, ct := range sc.Crosstabs {
+		for _, c := range ct.Cells {
+			rows = append(rows, []string{ct.Dimension, c.Category, fmt.Sprint(c.Completed), fmt.Sprint(c.Weighted)})
+		}
+	}
+	if err := output.WriteTable(w, []string{"차원", "범주", "완료", "가중"}, rows); err != nil {
+		return err
+	}
+	if sc.Weighting != "" {
+		fmt.Fprintf(w, "\n가중: %s\n", sc.Weighting)
+	}
+	if sc.MarginError != "" {
+		fmt.Fprintf(w, "표본오차: %s\n", sc.MarginError)
 	}
 	return nil
 }

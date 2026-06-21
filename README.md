@@ -66,6 +66,7 @@ kvote nesdc elections -f table
 
 # 단건 상세 메타데이터 (기관·방식·표본·응답률·표본오차·공표일시 + 교차표)
 kvote nesdc show 19366
+kvote nesdc show 19366 --crosstab -f table   # 표본 구성(성별·연령·지역 × 완료·가중)
 
 # 첨부파일(통계표·설문지 PDF) 다운로드
 kvote nesdc pull 19366 -o ./downloads
