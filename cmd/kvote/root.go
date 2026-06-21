@@ -3,6 +3,7 @@ package main
 import (
 	"time"
 
+	"github.com/JungHoonGhae/kvote/internal/nec"
 	"github.com/JungHoonGhae/kvote/internal/nesdc"
 	"github.com/JungHoonGhae/kvote/internal/output"
 	"github.com/spf13/cobra"
@@ -52,4 +53,13 @@ func newNESDCClient() *nesdc.Client {
 		opts = append(opts, nesdc.WithBaseURL(flagBaseURL))
 	}
 	return nesdc.New(opts...)
+}
+
+// newNECClient builds a NEC (data.go.kr) client from the global flags.
+func newNECClient() *nec.Client {
+	opts := []nec.Option{nec.WithDelay(flagDelay)}
+	if flagBaseURL != "" {
+		opts = append(opts, nec.WithBaseURL(flagBaseURL))
+	}
+	return nec.New(opts...)
 }

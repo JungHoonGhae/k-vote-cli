@@ -35,7 +35,12 @@ go test ./internal/nesdc -run TestDetailResults -v
 cmd/kvote/          CLI (cobra). provider 별로 명령 그룹 분리.
   root.go           전역 플래그(--format/--delay/--base-url), 클라이언트 빌더
   nesdc.go          nesdc 명령 그룹 + 렌더링 헬퍼(renderList/renderDetail/renderAgencies)
-  nec.go            nec 명령 그룹 (스텁 + roadmap)
+  nec.go            nec 명령 그룹 (datasets/pull)
+internal/nec/       NEC provider — data.go.kr 공개 파일 데이터 클라이언트 (package nec)
+  client.go         rate-limited HTTP + getDoc
+  datasets.go       선관위 파일 데이터 검색 파서 (selectDataSetList.do, dt 포맷/제목 분리)
+  download.go       uddi 조회 → selectFileDataDownload.do(atchFileId) → fileDownload.do
+  filename.go       Content-Disposition 파일명 인코딩 복구
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)
   board.go          게시판 레지스트리 (bbsId+menuNo 로 파라미터화)
@@ -77,16 +82,23 @@ internal/version/   ldflags 주입 버전 메타
 
 ### 테스트 전략
 
-`internal/nesdc/nesdc_test.go` 는 `httptest.Server` 로 `testdata/*.html` 픽스처를 서빙하고
-`WithBaseURL` 로 클라이언트를 연결해 **네트워크 없이** 전체 경로(URL 빌드 → 파싱)를 검증합니다.
-포털 마크업이 바뀌면 픽스처를 최신 HTML 로 교체하세요.
+`internal/nesdc/nesdc_test.go`·`internal/nec/nec_test.go` 는 `httptest.Server` 로 픽스처를
+서빙하고 `WithBaseURL` 로 클라이언트를 연결해 **네트워크 없이** 전체 경로(URL 빌드 → 파싱 →
+다운로드)를 검증합니다. nesdc 는 `testdata/*.html`, nec 은 테스트 내 인라인 HTML/JSON 응답.
+마크업이 바뀌면 픽스처를 최신본으로 교체하세요.
 
-## NEC provider 작업 시 주의 (준비 중)
+## NEC provider (data.go.kr 키리스 파일 데이터)
 
-- `info.nec.go.kr` (선거통계시스템) 은 **robots.txt 가 `Disallow: /`** — 직접 스크래핑 지양.
-- 공식 OpenAPI 는 키 발급 필요 → 키리스 원칙상 후순위.
-- 우선순위: **키 없이 받는 공개 데이터 파일**(data.nec.go.kr / data.go.kr CSV·XLS 파일셋).
-- NEC 게시판은 NESDC 와 다른 엔진(`www.nec.go.kr/.../List.do?cbIdx=N`) — 별도 파서 필요.
+- **info.nec.go.kr(선거통계시스템)은 직접 다루지 않는다**: robots.txt `Disallow: /` 에 더해,
+  콘텐츠 페이지가 헤드리스 브라우저 세션 안에서도 "비정상적인 접근"으로 거부됨(JSF 상태기반).
+  탐지 회피로 우회하지 않는다 — 대신 선관위의 **공식 배포 채널**을 쓴다.
+- **소스 = data.go.kr 파일 데이터**: 선관위가 개표결과·투표율을 CSV/XLSX 파일셋으로 공개.
+  파일 다운로드 자체는 **API 키 불필요**(키 발급형 OpenAPI 와 별개).
+- **다운로드 3단계**(`download.go`): ① `/data/{pk}/fileData.do` 상세에서 `fn_fileDataDown(pk,
+  'uddi:…')` 의 publicDataDetailPk 추출 → ② `selectFileDataDownload.do` 가 `atchFileId`·파일명
+  JSON 반환 → ③ `/cmm/cmm/fileDownload.do?atchFileId=&fileDetailSn=&dataNm=` 가 실제 파일 스트림.
+- **개표결과 CSV 는 CP949(EUC-KR)** 인코딩 long-format(시도/선거구/읍면동/투표구/후보자/득표수).
+  현재 provider 는 원본 파일 다운로드까지 제공(정규화 파서는 향후 과제).
 
 ## 컨벤션
 

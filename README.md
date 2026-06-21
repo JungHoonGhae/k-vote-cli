@@ -20,12 +20,12 @@
 | provider | 사이트 | 내용 | 상태 |
 |---|---|---|---|
 | `nesdc` | 중앙선거여론조사심의위원회 (nesdc.go.kr) | 여론조사 결과·조사기관 현황 | ✅ |
-| `nec` | 중앙선거관리위원회 (nec.go.kr) | 선거 통계 (개표·투표율 등) | 🚧 준비 중 |
+| `nec` | 중앙선거관리위원회 → data.go.kr | 개표결과·투표율 등 공개 파일 데이터 | ✅ |
 
 `nesdc.go.kr` 은 공식 API 가 없어 스크래핑이 유일한 프로그램적 접근입니다.
-`nec` 는 통계시스템(info.nec.go.kr)이 robots.txt 로 전면 크롤링을 금지하고 공식 API 는 키 발급이
-필요하므로, **키 없이 받을 수 있는 공개 데이터 파일**(data.nec.go.kr / data.go.kr 파일셋)을
-우선하도록 설계 중입니다. (`kvote nec roadmap`)
+`nec` 는 선거통계시스템(info.nec.go.kr)이 robots.txt 로 전면 크롤링을 금지하므로 **직접
+스크래핑하지 않습니다.** 대신 선관위가 공식 배포 채널인 **data.go.kr 에 올린 개표결과·투표율
+파일 데이터(CSV/XLSX)** 를 — API 키 없이 — 검색·다운로드합니다.
 
 ## 설치
 
@@ -68,6 +68,10 @@ kvote nesdc agencies --cancelled -f table
 # 전체 일괄 수집 → JSONL (대규모 분석용)
 kvote nesdc sync --from 2026-01-01 > surveys.jsonl
 kvote nesdc sync --max-pages 5 --pull -o ./archive   # 메타 + 첨부 동시 수집
+
+# --- NEC: 선관위 개표결과·투표율 (data.go.kr 공개 파일, 키 불필요) ---
+kvote nec datasets -q 개표결과 -f table              # 선관위 공개 데이터셋 검색
+kvote nec pull 15025527 -o ./downloads               # 제22대 총선 개표결과 CSV
 ```
 
 ### 필터 (results 게시판)
