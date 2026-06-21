@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/text/encoding/korean"
 	"golang.org/x/text/transform"
 )
@@ -421,5 +422,119 @@ func TestAggregateZeroElectorateNoNaN(t *testing.T) {
 	}
 	if r.Candidates[0].Share != 0 {
 		t.Errorf("candidate Share = %v, want 0", r.Candidates[0].Share)
+	}
+}
+
+func buildXLSX(t *testing.T) []byte {
+	t.Helper()
+	f := excelize.NewFile()
+	// 시트1: 후보형 (시도지사 모사) — 차원 4열: 선거구명,구시군명,읍면동명,구분
+	s1 := "시·도지사"
+	f.SetSheetName(f.GetSheetName(0), s1)
+	put := func(sheet string, rows [][]any) {
+		for i, row := range rows {
+			cell, _ := excelize.CoordinatesToCellName(1, i+1)
+			if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	put(s1, [][]any{
+		{"선거구명", "구시군명", "읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		{"", "", "", "", "선거인수", "선거인수", "후보1", "후보2", "", "", ""},
+		{"서울특별시", "종로구", "", "", "", "", "더불어민주당\n송영길", "국민의힘\n오세훈", "", "", ""},
+		{"서울특별시", "종로구", "", "합계", "1,000", "700", "300", "390", "690", "10", "300"},
+		{"서울특별시", "종로구", "", "관외사전투표", "100", "100", "44", "54", "98", "2", "0"},
+		{"서울특별시", "종로구", "청운효자동", "소계", "500", "400", "180", "210", "390", "10", "100"},
+		{"서울특별시", "종로구", "청운효자동", "관내사전투표", "200", "200", "90", "108", "198", "2", "0"},
+	})
+	// 시트2: 비례형 — 차원 3열, 정당만(줄바꿈 없음)
+	s2 := "광역의원비례대표"
+	f.NewSheet(s2)
+	put(s2, [][]any{
+		{"시도명", "구시군명", "읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "", "계", "무효투표수", "기권수"},
+		{"", "", "", "", "선거인수", "선거인수", "정당1", "정당2", "", "", ""},
+		{"서울특별시", "종로구", "", "", "", "", "더불어민주당", "국민의힘", "", "", ""},
+		{"서울특별시", "종로구", "", "합계", "1,000", "700", "320", "360", "680", "20", "300"},
+	})
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestParseResultsXLSX(t *testing.T) {
+	recs, err := ParseResultsXLSX(buildXLSX(t))
+	if err != nil {
+		t.Fatalf("ParseResultsXLSX: %v", err)
+	}
+	// 시트1 데이터행 4개(합계/관외사전/소계/관내사전) + 시트2 1개(합계) = 5; 후보정의행은 제외
+	if len(recs) != 5 {
+		t.Fatalf("got %d records, want 5: %+v", len(recs), recs)
+	}
+	// 첫 레코드: 시도지사 합계
+	r := recs[0]
+	if r.Race != "시·도지사" {
+		t.Errorf("race = %q", r.Race)
+	}
+	if r.Dim("선거구명") != "서울특별시" || r.Dim("구시군명") != "종로구" || r.Dim("구분") != "합계" {
+		t.Errorf("dimensions wrong: %+v", r.Dimensions)
+	}
+	if !r.Aggregate || r.VoteType != "" {
+		t.Errorf("합계 should be aggregate w/ empty voteType: agg=%v vt=%q", r.Aggregate, r.VoteType)
+	}
+	if r.Electorate != 1000 || r.Votes != 700 || r.Invalid != 10 || r.Abstention != 300 {
+		t.Errorf("metrics wrong: %+v", r)
+	}
+	if len(r.Candidates) != 2 || r.Candidates[0].Party != "더불어민주당" || r.Candidates[0].Name != "송영길" || r.Candidates[0].Votes != 300 {
+		t.Errorf("candidates wrong: %+v", r.Candidates)
+	}
+	// 관내사전투표 leaf
+	var leaf *ElectionResult
+	for i := range recs {
+		if recs[i].Dim("구분") == "관내사전투표" && recs[i].Race == "시·도지사" {
+			leaf = &recs[i]
+		}
+	}
+	if leaf == nil || leaf.VoteType != "관내사전" || leaf.Aggregate {
+		t.Fatalf("관내사전 leaf wrong: %+v", leaf)
+	}
+	// 비례: 정당만, Name 빈칸
+	var prop *ElectionResult
+	for i := range recs {
+		if recs[i].Race == "광역의원비례대표" {
+			prop = &recs[i]
+		}
+	}
+	if prop == nil || len(prop.Candidates) != 2 || prop.Candidates[0].Party != "더불어민주당" || prop.Candidates[0].Name != "" {
+		t.Fatalf("비례 candidate wrong: %+v", prop)
+	}
+}
+
+func TestParseResultsXLSXSkipsUnanchored(t *testing.T) {
+	f := excelize.NewFile()
+	f.SetSheetName(f.GetSheetName(0), "엉뚱시트")
+	cell, _ := excelize.CoordinatesToCellName(1, 1)
+	row := []any{"아무거나", "헤더", "여기"}
+	f.SetSheetRow("엉뚱시트", cell, &row)
+	f.NewSheet("시·도지사")
+	good := [][]any{
+		{"선거구명", "구시군명", "읍면동명", "구분", "선거인수", "투표수", "후보자별 득표수", "계", "무효투표수", "기권수"},
+		{"", "", "", "", "", "", "후보1", "", "", ""},
+		{"서울특별시", "종로구", "", "", "", "", "무소속\n홍길동", "", "", ""},
+		{"서울특별시", "종로구", "", "합계", "10", "8", "8", "8", "0", "2"},
+	}
+	for i, r := range good {
+		c, _ := excelize.CoordinatesToCellName(1, i+1)
+		f.SetSheetRow("시·도지사", c, &r)
+	}
+	buf, _ := f.WriteToBuffer()
+	recs, err := ParseResultsXLSX(buf.Bytes())
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(recs) != 1 || recs[0].Race != "시·도지사" {
+		t.Errorf("unanchored sheet should be skipped, valid one parsed: %+v", recs)
 	}
 }
