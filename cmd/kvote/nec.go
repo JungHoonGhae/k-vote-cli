@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/JungHoonGhae/kvote/internal/nec"
-	"github.com/JungHoonGhae/kvote/internal/output"
+	"github.com/JungHoonGhae/kvote-cli/internal/nec"
+	"github.com/JungHoonGhae/kvote-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

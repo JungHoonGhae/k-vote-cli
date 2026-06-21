@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/JungHoonGhae/kvote/internal/nesdc"
-	"github.com/JungHoonGhae/kvote/internal/output"
+	"github.com/JungHoonGhae/kvote-cli/internal/nesdc"
+	"github.com/JungHoonGhae/kvote-cli/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

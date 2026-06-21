@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/JungHoonGhae/kvote/internal/version"
+	"github.com/JungHoonGhae/kvote-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
