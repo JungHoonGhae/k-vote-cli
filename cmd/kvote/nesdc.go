@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/JungHoonGhae/kvote/internal/nesdc"
 	"github.com/JungHoonGhae/kvote/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func nesdcCmd() *cobra.Command {
@@ -15,7 +17,7 @@ func nesdcCmd() *cobra.Command {
 		Use:   "nesdc",
 		Short: "중앙선거여론조사심의위원회 (nesdc.go.kr) 여론조사 데이터",
 	}
-	c.AddCommand(nesdcBoardsCmd(), nesdcListCmd(), nesdcShowCmd(), nesdcPullCmd(), nesdcSyncCmd(), nesdcAgenciesCmd())
+	c.AddCommand(nesdcBoardsCmd(), nesdcListCmd(), nesdcShowCmd(), nesdcPullCmd(), nesdcSyncCmd(), nesdcBulkCmd(), nesdcElectionsCmd(), nesdcAgenciesCmd())
 	return c
 }
 
@@ -43,11 +45,63 @@ func nesdcBoardsCmd() *cobra.Command {
 	}
 }
 
+func nesdcElectionsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "elections",
+		Short: "선거구분 코드 목록 (--gubun 값) — 포털에서 실시간 조회",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			els, err := newNESDCClient().Elections(context.Background())
+			if err != nil {
+				return err
+			}
+			if format == output.Table {
+				rows := make([][]string, 0, len(els))
+				for _, e := range els {
+					rows = append(rows, []string{e.Code, e.Name})
+				}
+				return output.WriteTable(cmd.OutOrStdout(), []string{"code", "name"}, rows)
+			}
+			return output.WriteJSON(cmd.OutOrStdout(), els)
+		},
+	}
+}
+
 // ---- list ----
+
+// filterFlags are the search/filter flags shared by `list` and `sync`. They map
+// friendly names to the board's raw query codes.
+type filterFlags struct {
+	query, field, dateField, from, to, gubun string
+}
+
+func (ff *filterFlags) register(f *pflag.FlagSet) {
+	f.StringVarP(&ff.query, "query", "q", "", "검색어 (searchWrd)")
+	f.StringVar(&ff.field, "field", "", "검색 필드: "+strings.Join(nesdc.SortedKeys(nesdc.SearchField), "|")+" (또는 원시 코드)")
+	f.StringVar(&ff.dateField, "date-field", "registered", "기간 기준: "+strings.Join(nesdc.SortedKeys(nesdc.DateField), "|"))
+	f.StringVar(&ff.from, "from", "", "시작일 (YYYY-MM-DD)")
+	f.StringVar(&ff.to, "to", "", "종료일 (YYYY-MM-DD)")
+	f.StringVar(&ff.gubun, "gubun", "", "선거구분 코드 (results 전용; `nesdc elections` 로 조회)")
+}
+
+func (ff *filterFlags) options(page int) nesdc.ListOptions {
+	return nesdc.ListOptions{
+		Page:       page,
+		Keyword:    ff.query,
+		SearchCnd:  nesdc.ResolveSearchField(ff.field),
+		SearchTime: nesdc.ResolveDateField(ff.dateField),
+		From:       ff.from,
+		To:         ff.to,
+		PollGubun:  ff.gubun,
+	}
+}
 
 func nesdcListCmd() *cobra.Command {
 	var page int
-	var query, from, to, gubun string
+	var ff filterFlags
 	c := &cobra.Command{
 		Use:   "list [board]",
 		Short: "게시판 목록 조회 (기본: results)",
@@ -61,21 +115,15 @@ func nesdcListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := newNESDCClient().List(context.Background(), board, nesdc.ListOptions{
-				Page: page, Keyword: query, From: from, To: to, PollGubun: gubun,
-			})
+			res, err := newNESDCClient().List(context.Background(), board, ff.options(page))
 			if err != nil {
 				return err
 			}
 			return renderList(cmd, format, res)
 		},
 	}
-	f := c.Flags()
-	f.IntVar(&page, "page", 1, "페이지 번호")
-	f.StringVarP(&query, "query", "q", "", "검색어")
-	f.StringVar(&from, "from", "", "시작일 (YYYY-MM-DD)")
-	f.StringVar(&to, "to", "", "종료일 (YYYY-MM-DD)")
-	f.StringVar(&gubun, "gubun", "", "선거구분 코드 (results 전용)")
+	c.Flags().IntVar(&page, "page", 1, "페이지 번호")
+	ff.register(c.Flags())
 	return c
 }
 
@@ -159,7 +207,8 @@ func nesdcPullCmd() *cobra.Command {
 // ---- sync ----
 
 func nesdcSyncCmd() *cobra.Command {
-	var query, from, to, gubun, outDir string
+	var ff filterFlags
+	var outDir string
 	var maxPages int
 	var pull bool
 	c := &cobra.Command{
@@ -179,9 +228,7 @@ func nesdcSyncCmd() *cobra.Command {
 
 			total := 0
 			for page := 1; maxPages == 0 || page <= maxPages; page++ {
-				res, err := client.List(ctx, board, nesdc.ListOptions{
-					Page: page, Keyword: query, From: from, To: to, PollGubun: gubun,
-				})
+				res, err := client.List(ctx, board, ff.options(page))
 				if err != nil {
 					return err
 				}
@@ -208,10 +255,7 @@ func nesdcSyncCmd() *cobra.Command {
 		},
 	}
 	f := c.Flags()
-	f.StringVarP(&query, "query", "q", "", "검색어")
-	f.StringVar(&from, "from", "", "시작일 (YYYY-MM-DD)")
-	f.StringVar(&to, "to", "", "종료일 (YYYY-MM-DD)")
-	f.StringVar(&gubun, "gubun", "", "선거구분 코드 (results 전용)")
+	ff.register(f)
 	f.IntVar(&maxPages, "max-pages", 0, "최대 페이지 수 (0=빈 페이지까지 전체)")
 	f.BoolVar(&pull, "pull", false, "각 항목의 첨부파일도 다운로드")
 	f.StringVarP(&outDir, "out", "o", "", "다운로드 루트 (기본: downloads/<nttId>)")
@@ -229,6 +273,104 @@ func pullAttachments(ctx context.Context, client *nesdc.Client, board nesdc.Boar
 			fmt.Fprintf(cmd.ErrOrStderr(), "  ✗ %s: %v\n", a.Name, err)
 		}
 	}
+}
+
+// ---- bulk ----
+
+func nesdcBulkCmd() *cobra.Command {
+	var boardName, saveDir string
+	c := &cobra.Command{
+		Use:   "bulk",
+		Short: "주차별 누적 마스터 엑셀을 받아 정규화된 여론조사 레코드로 출력",
+		Long: `data 게시판 최신 글에 첨부된 누적 마스터 엑셀(전국단위 선거여론조사결과의
+주요 데이터)을 내려받아 시트(기간)별로 한 건씩 정규화한 뒤 --format 으로 출력합니다.
+2023.10.30 이후 전체 정당지지도 조사가 한 파일에 누적돼 있어 대규모 분석에 적합합니다.
+
+--save <dir> 를 주면 파싱과 별개로 원본 엑셀 파일도 보존합니다.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			board, err := nesdc.BoardByName(boardName)
+			if err != nil {
+				return err
+			}
+			client := newNESDCClient()
+			ctx := context.Background()
+
+			att, err := client.LatestBulkXlsx(ctx, board)
+			if err != nil {
+				return err
+			}
+
+			dir := saveDir
+			cleanup := false
+			if dir == "" {
+				dir, err = os.MkdirTemp("", "kvote-bulk-")
+				if err != nil {
+					return err
+				}
+				cleanup = true
+				defer os.RemoveAll(dir)
+			}
+			path, err := client.Download(ctx, att, dir)
+			if err != nil {
+				return err
+			}
+			if !cleanup {
+				fmt.Fprintf(cmd.ErrOrStderr(), "원본 저장: %s\n", path)
+			}
+
+			records, err := nesdc.ParseBulkXlsx(path)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "파싱 완료: %d건\n", len(records))
+			return renderBulk(cmd, format, records)
+		},
+	}
+	f := c.Flags()
+	f.StringVar(&boardName, "board", "data", "게시판 이름 (누적 엑셀이 붙는 게시판)")
+	f.StringVar(&saveDir, "save", "", "원본 엑셀을 보존할 디렉터리 (기본: 임시 후 삭제)")
+	return c
+}
+
+func renderBulk(cmd *cobra.Command, format output.Format, recs []nesdc.PollRecord) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"기간", "등록번호", "조사기관", "의뢰자", "조사일자", "방법", "표본수", "응답률", "표본오차", "정당지지율"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{
+				r.Period, r.RegNo, r.Agency, r.Client, r.SurveyDate,
+				r.Method, r.SampleSize, r.ResponseRate, r.MarginError, partySummary(r.PartySupport),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+// partySummary renders a party→support map as a compact "당명 값" list for the
+// table view. Map order is non-deterministic, so JSON/JSONL is preferred for
+// analysis; this is a human-readable digest only.
+func partySummary(m map[string]string) string {
+	if len(m) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(m))
+	for k, v := range m {
+		parts = append(parts, k+" "+v)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ---- agencies ----

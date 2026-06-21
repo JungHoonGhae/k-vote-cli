@@ -11,12 +11,13 @@ import (
 
 // ListOptions filters a board listing. Zero values mean "no filter".
 type ListOptions struct {
-	Page      int    // pageIndex (1-based); 0 → 1
-	Keyword   string // searchWrd
-	SearchCnd string // searchCnd (search field selector); default "0"
-	From      string // sdate, format YYYY-MM-DD
-	To        string // edate, format YYYY-MM-DD
-	PollGubun string // pollGubuncd (results board only)
+	Page       int    // pageIndex (1-based); 0 → 1
+	Keyword    string // searchWrd
+	SearchCnd  string // searchCnd (search field selector); default "0"
+	SearchTime string // searchTime: date field that From/To apply to (1 등록일 / 2 최초공표일 / 3 조사일시)
+	From       string // sdate, format YYYY-MM-DD
+	To         string // edate, format YYYY-MM-DD
+	PollGubun  string // pollGubuncd (results board only)
 }
 
 // ListItem is one row of a board listing. NttID is the stable post identifier;
@@ -54,11 +55,20 @@ func (c *Client) List(ctx context.Context, b Board, opts ListOptions) (*ListResu
 		q.Set("searchCnd", cnd)
 		q.Set("searchWrd", opts.Keyword)
 	}
-	if opts.From != "" {
-		q.Set("sdate", opts.From)
-	}
-	if opts.To != "" {
-		q.Set("edate", opts.To)
+	// The portal ignores sdate/edate unless searchTime names which date field to
+	// filter on, so default to 등록일 (1) whenever a range is given.
+	if opts.From != "" || opts.To != "" {
+		st := opts.SearchTime
+		if st == "" {
+			st = "1"
+		}
+		q.Set("searchTime", st)
+		if opts.From != "" {
+			q.Set("sdate", opts.From)
+		}
+		if opts.To != "" {
+			q.Set("edate", opts.To)
+		}
 	}
 	if opts.PollGubun != "" {
 		q.Set("pollGubuncd", opts.PollGubun)

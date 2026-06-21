@@ -43,15 +43,23 @@ make install      # $GOBIN 에 설치
 # 여론조사 결과 최신 목록 (표 형식)
 kvote nesdc list -f table
 
-# 특정 게시판 / 검색 / 기간
-kvote nesdc list data --from 2026-01-01 --to 2026-06-30 -f table
-kvote nesdc list -q 리얼미터 -f table
+# 검색·기간 필터 (--field 로 검색 대상 지정, --date-field 로 기간 기준 지정)
+kvote nesdc list -q 리얼미터 --field agency -f table
+kvote nesdc list --from 2025-01-01 --to 2025-01-31 --date-field registered -f table
+kvote nesdc list --gubun VT044 -f table                  # 제22대 대통령선거만
+
+# 선거구분 코드(--gubun 값) 실시간 조회
+kvote nesdc elections -f table
 
 # 단건 상세 메타데이터 (기관·방식·표본·응답률·표본오차·공표일시 + 교차표)
 kvote nesdc show 19366
 
 # 첨부파일(통계표·설문지 PDF) 다운로드
 kvote nesdc pull 19366 -o ./downloads
+
+# 주차별 누적 마스터 엑셀 → 정규화된 여론조사 레코드 (정당지지율 포함)
+kvote nesdc bulk -f jsonl > polls.jsonl                   # 2023.10.30~ 전체 누적
+kvote nesdc bulk --save ./archive -f json                # 원본 엑셀도 보존
 
 # 조사기관 등록현황 / 취소현황
 kvote nesdc agencies -f table
@@ -61,6 +69,18 @@ kvote nesdc agencies --cancelled -f table
 kvote nesdc sync --from 2026-01-01 > surveys.jsonl
 kvote nesdc sync --max-pages 5 --pull -o ./archive   # 메타 + 첨부 동시 수집
 ```
+
+### 필터 (results 게시판)
+
+| 플래그 | 의미 | 값 |
+|---|---|---|
+| `-q`, `--query` | 검색어 | 자유 문자열 |
+| `--field` | 검색 대상 필드 | `agency` `client` `method` `frame` `name` `sido` `regno` |
+| `--from` / `--to` | 기간 | `YYYY-MM-DD` |
+| `--date-field` | 기간 기준 | `registered`(기본) `published` `surveyed` |
+| `--gubun` | 선거구분 | `nesdc elections` 코드 (예: `VT044`) |
+
+> 포털은 `--date-field` 없이는 기간 필터를 무시합니다 — kvote 는 기간 지정 시 자동으로 `registered` 를 기본 적용합니다.
 
 ## 게시판 (nesdc)
 

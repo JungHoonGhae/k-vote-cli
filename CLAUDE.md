@@ -39,9 +39,11 @@ cmd/kvote/          CLI (cobra). provider 별로 명령 그룹 분리.
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)
   board.go          게시판 레지스트리 (bbsId+menuNo 로 파라미터화)
-  list.go           목록 파서 (.row.th 헤더 → .row.tr 행)
-  detail.go         view.do 상세 파서 (메타 테이블 + 첨부)
+  list.go           목록 파서 (.row.th 헤더 → .row.tr 행) + 검색/기간 필터
+  filters.go        필터 코드 매핑(searchCnd/searchTime) + 선거구분(elections) 스크래퍼
+  detail.go         view.do 상세 파서 (메타 테이블 + 첨부; onclick·href 두 형태)
   download.go       FileDown.do 다운로드 + 파일명 인코딩 복구
+  bulk.go           data 게시판 누적 마스터 엑셀(excelize) → 정규화 PollRecord
   agency.go         onvy 조사기관 등록/취소 현황 파서
 internal/output/    json / jsonl / table 렌더러 (한글 폭 보정)
 internal/version/   ldflags 주입 버전 메타
@@ -61,6 +63,16 @@ internal/version/   ldflags 주입 버전 메타
 - **상세 메타는 lossless**: `Detail.Fields` 는 모든 th/td 행을 순서대로 보존(176행 규모).
   `Detail.Summary` 는 단일 라벨 행 중 분석 핵심 스칼라만 추림(`summaryLabels`). 일부 첨부는
   공표일시 24/48시간 후 공개라 그 전엔 다운로드가 "embargoed" 에러로 표면화됨.
+- **첨부 앵커는 게시판마다 두 형태**: results 계열은 `onclick="view('id','sn','bbs','key')"`,
+  data/notice 계열은 `<a href=".../FileDown.do?atchFileId=...&fileSn=...&bbsId=...">`(bbsKey 없음).
+  `parseAttachments` 가 둘 다 처리하며, href 쿼리는 `parseRawQuery` 로 **percent-decode 없이** 추출
+  (`url.Values` 쓰면 `%` 가 풀려 다운로드가 깨짐).
+- **기간 필터는 `searchTime` 동반 필수**: 포털은 `sdate`/`edate` 만 보내면 **조용히 무시**한다.
+  `List` 는 `From/To` 가 있으면 `searchTime` 을 자동 세팅(기본 `1`=등록일). `filters.go` 의
+  `SearchField`/`DateField` 가 친숙한 이름(agency/registered…)을 raw 코드로 매핑.
+- **data 게시판 누적 엑셀**: 매 주차 글에 같은 마스터 `.xlsx`(2023.10.30~ 전체 누적)가 재첨부됨.
+  `LatestBulkXlsx` 가 최신 글에서 `.xlsx` 첨부를 찾고, `ParseBulkXlsx` 가 시트(기간)별 2행 헤더
+  (고정 메타 10열 + `정당지지율` 아래 동적 정당 열)를 `PollRecord` 로 정규화.
 - **rate limit**: `Client.throttle()` 이 요청 간 `--delay`(기본 700ms) 보장. 예의 있는 수집 원칙.
 
 ### 테스트 전략

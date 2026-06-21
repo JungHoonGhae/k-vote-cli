@@ -141,28 +141,66 @@ func parseFields(doc *goquery.Document) []Field {
 	return fields
 }
 
-// parseAttachments extracts every file referenced by a view('...') call.
+// parseAttachments extracts every downloadable file on a view.do page. Two
+// markup forms exist: results-style boards reference files via an
+// onclick="view('id','sn','bbs','key')" call, while data/notice boards link
+// FileDown.do directly with the same params as a query string (no bbsKey).
+// Both are handled.
 func parseAttachments(doc *goquery.Document) []Attachment {
 	var out []Attachment
 	seen := map[string]bool{}
-	doc.Find("a[onclick]").Each(func(_ int, a *goquery.Selection) {
-		onclick, _ := a.Attr("onclick")
-		m := reViewCall.FindStringSubmatch(onclick)
-		if m == nil {
+	add := func(name, id, sn, bbs, key string) {
+		if id == "" {
 			return
 		}
-		key := m[1] + "|" + m[2]
-		if seen[key] {
+		k := id + "|" + sn
+		if seen[k] {
 			return
 		}
-		seen[key] = true
+		seen[k] = true
 		out = append(out, Attachment{
-			Name:       cleanText(a.Text()),
-			AtchFileID: m[1],
-			FileSn:     m[2],
-			BbsID:      m[3],
-			BbsKey:     m[4],
+			Name:       cleanText(name),
+			AtchFileID: id,
+			FileSn:     sn,
+			BbsID:      bbs,
+			BbsKey:     key,
 		})
+	}
+	// onclick view('atchFileId','fileSn','bbsId','bbsKey')
+	doc.Find("a[onclick]").Each(func(_ int, a *goquery.Selection) {
+		if m := reViewCall.FindStringSubmatch(mustAttr(a, "onclick")); m != nil {
+			add(a.Text(), m[1], m[2], m[3], m[4])
+		}
 	})
+	// direct href to FileDown.do?atchFileId=...&fileSn=...&bbsId=...
+	doc.Find("a[href]").Each(func(_ int, a *goquery.Selection) {
+		href := mustAttr(a, "href")
+		if !strings.Contains(href, "FileDown.do") {
+			return
+		}
+		q := parseRawQuery(href)
+		add(a.Text(), q["atchFileId"], q["fileSn"], q["bbsId"], q["bbsKey"])
+	})
+	return out
+}
+
+func mustAttr(s *goquery.Selection, name string) string {
+	v, _ := s.Attr(name)
+	return v
+}
+
+// parseRawQuery splits a query string WITHOUT percent-decoding. atchFileId and
+// fileSn arrive already-encoded and must stay verbatim for DownloadURL (see the
+// FileDown.do encoding note in CLAUDE.md), so url.Values must not be used here.
+func parseRawQuery(href string) map[string]string {
+	if i := strings.IndexByte(href, '?'); i >= 0 {
+		href = href[i+1:]
+	}
+	out := map[string]string{}
+	for _, pair := range strings.Split(href, "&") {
+		if kv := strings.SplitN(pair, "=", 2); len(kv) == 2 {
+			out[kv[0]] = kv[1]
+		}
+	}
 	return out
 }

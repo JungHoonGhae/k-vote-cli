@@ -4,10 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/xuri/excelize/v2"
 )
 
 // fixtureServer serves saved portal HTML for the routes the client hits, so the
@@ -130,6 +135,144 @@ func TestDecodeFilename(t *testing.T) {
 	for cd, want := range cases {
 		if got := filenameFromCD(cd); got != want {
 			t.Errorf("filenameFromCD(%q) = %q, want %q", cd, got, want)
+		}
+	}
+}
+
+func TestElections(t *testing.T) {
+	srv := fixtureServer(t)
+	c := testClient(t, srv.URL)
+
+	els, err := c.Elections(context.Background())
+	if err != nil {
+		t.Fatalf("Elections: %v", err)
+	}
+	if len(els) == 0 {
+		t.Fatal("expected election options")
+	}
+	for _, e := range els {
+		if e.Code == "" || e.Name == "" {
+			t.Errorf("incomplete election: %+v", e)
+		}
+		if strings.Contains(e.Name, "선거구분") {
+			t.Errorf("placeholder option leaked: %+v", e)
+		}
+	}
+}
+
+// TestListDateFilterParams locks in the fix for the silently-ignored date
+// filter: sdate/edate must be accompanied by searchTime or the portal drops them.
+func TestListDateFilterParams(t *testing.T) {
+	var got url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query()
+		b, _ := os.ReadFile(filepath.Join("testdata", "results_list.html"))
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+	c := testClient(t, srv.URL)
+	board, _ := BoardByName("results")
+
+	if _, err := c.List(context.Background(), board, ListOptions{From: "2025-01-01", To: "2025-01-05"}); err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got.Get("searchTime") != "1" {
+		t.Errorf("searchTime = %q, want default 1 when a range is set", got.Get("searchTime"))
+	}
+	if got.Get("sdate") != "2025-01-01" || got.Get("edate") != "2025-01-05" {
+		t.Errorf("sdate/edate = %q/%q", got.Get("sdate"), got.Get("edate"))
+	}
+
+	if _, err := c.List(context.Background(), board, ListOptions{SearchTime: "3", From: "2025-01-01"}); err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if got.Get("searchTime") != "3" {
+		t.Errorf("explicit searchTime not honoured: %q", got.Get("searchTime"))
+	}
+}
+
+func TestResolveFilters(t *testing.T) {
+	if got := ResolveSearchField("agency"); got != "1" {
+		t.Errorf("ResolveSearchField(agency) = %q, want 1", got)
+	}
+	if got := ResolveDateField("surveyed"); got != "3" {
+		t.Errorf("ResolveDateField(surveyed) = %q, want 3", got)
+	}
+	// raw codes and unknown values pass through unchanged
+	if got := ResolveSearchField("11"); got != "11" {
+		t.Errorf("raw code mangled: %q", got)
+	}
+	if got := ResolveDateField(""); got != "" {
+		t.Errorf("empty should stay empty: %q", got)
+	}
+}
+
+// TestParseAttachmentsHrefForm covers the data/notice board markup where files
+// are linked directly via FileDown.do (no onclick view() call), with the
+// already-encoded params preserved verbatim.
+func TestParseAttachmentsHrefForm(t *testing.T) {
+	html := `<html><body>
+		<a href="javascript:void(0);" onclick="view('ID%2F1','SN%3D%3D','B0000005','KEY%3D')">설문지.pdf</a>
+		<a href="/portal/cmm/fms/FileDown.do?atchFileId=ABC%2Fxyz%3D&fileSn=Q%3D%3D&bbsId=B0000025">누적.xlsx</a>
+	</body></html>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		t.Fatal(err)
+	}
+	atts := parseAttachments(doc)
+	if len(atts) != 2 {
+		t.Fatalf("got %d attachments, want 2: %+v", len(atts), atts)
+	}
+	href := atts[1]
+	if href.AtchFileID != "ABC%2Fxyz%3D" || href.FileSn != "Q%3D%3D" || href.BbsID != "B0000025" {
+		t.Errorf("href attachment params decoded/lost: %+v", href)
+	}
+	if href.BbsKey != "" {
+		t.Errorf("data board has no bbsKey, got %q", href.BbsKey)
+	}
+}
+
+func TestParseBulkXlsx(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bulk.xlsx")
+	f := excelize.NewFile()
+	const sheet = "정당지지도(test)"
+	f.SetSheetName(f.GetSheetName(0), sheet)
+	// two-row header: metadata labels then party names under 정당지지율(%)
+	header := []any{"등록번호", "조사기관", "의뢰자", "조사일자", "조사방법", "표본추출틀", "표본수(명)", "접촉률(%)", "응답률(%)", "95%신뢰수준\n표본오차(%p)", "정당지지율(%)", "", ""}
+	parties := []any{"", "", "", "", "", "", "", "", "", "", "더불어민주당", "국민의힘", "기타정당"}
+	data := []any{"12345", "한국갤럽", "한겨레", "26.01.01.~02.", "무선ARS(100)", "무선RDD", "1000", "20.0", "5.0", "±3.1", "40.0", "35.0", "5.0"}
+	for i, row := range [][]any{header, parties, data} {
+		cell, _ := excelize.CoordinatesToCellName(1, i+1)
+		if err := f.SetSheetRow(sheet, cell, &row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.SaveAs(path); err != nil {
+		t.Fatal(err)
+	}
+
+	recs, err := ParseBulkXlsx(path)
+	if err != nil {
+		t.Fatalf("ParseBulkXlsx: %v", err)
+	}
+	if len(recs) != 1 {
+		t.Fatalf("got %d records, want 1", len(recs))
+	}
+	r := recs[0]
+	if r.RegNo != "12345" || r.Agency != "한국갤럽" || r.SampleSize != "1000" {
+		t.Errorf("metadata mismapped: %+v", r)
+	}
+	if r.MarginError != "±3.1" {
+		t.Errorf("marginError = %q, want ±3.1", r.MarginError)
+	}
+	if r.Period != sheet {
+		t.Errorf("period = %q, want %q", r.Period, sheet)
+	}
+	want := map[string]string{"더불어민주당": "40.0", "국민의힘": "35.0", "기타정당": "5.0"}
+	for k, v := range want {
+		if r.PartySupport[k] != v {
+			t.Errorf("partySupport[%s] = %q, want %q (full: %v)", k, r.PartySupport[k], v, r.PartySupport)
 		}
 	}
 }
