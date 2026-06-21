@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<title>중앙선거여론조사심의위원회</title>
+<link rel="stylesheet" type="text/css" href="/css/NotoSansKR-Hestia.css"/>
+<link rel="stylesheet" type="text/css" href="/css/common.css"/>
+<link rel="stylesheet" type="text/css" href="/css/content.css"/>
+<script type="text/javascript" src="/js/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/js/placeholders.min.js"></script>
+<script type="text/javascript" src="/js/jquery.bxslider.js"></script>
+
+<!-- <link rel="stylesheet" href="/css/jquery-ui.css">
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/jquery-ui.min.js"></script> -->
+
+
+<!--[if lt IE 9]>
+   	<script type="text/javascript" src="/js/html5shiv.js"></script>
+	<script type="text/javascript" src="/js/IE9.js"></script>
+<![endif]-->
+</head>
+<body>
+<link rel="stylesheet" type="text/css" href="/css/NotoSansKR-Hestia.css"/>
+ 
+<!--[if lt IE 9]>
+   	<script type="text/javascript" src="/js/html5shiv.js"></script>
+	<script type="text/javascript" src="/js/IE9.js"></script>
+<![endif]-->
+<script type="text/javascript">
+/*===========================================================================================
+세션 타이머 관련 함수
+===========================================================================================*/
+var fvSesSecond  = 10*60;
+var timerchecker = null;
+
+$(document).ready(function(){
+	/* 세션 타이머에 사용 된 Login 유무 체크  */
+	var strValue = '';
+
+	if( strValue != null && strValue != '' )
+	{
+		initTimer();
+	}
+});
+
+//모바일 에이전트 구분
+var isMobile = {
+        Android: function () {
+                 return navigator.userAgent.match(/Android/i) == null ? false : true;
+        },
+        BlackBerry: function () {
+                 return navigator.userAgent.match(/BlackBerry/i) == null ? false : true;
+        },
+        IOS: function () {
+                 return navigator.userAgent.match(/iPhone|iPad|iPod/i) == null ? false : true;
+        },
+        Opera: function () {
+                 return navigator.userAgent.match(/Opera Mini/i) == null ? false : true;
+        },
+        Windows: function () {
+                 return navigator.userAgent.match(/IEMobile/i) == null ? false : true;
+        },
+        any: function () {
+                 return (isMobile.Android() || isMobile.BlackBerry() || isMobile.IOS() || isMobile.Opera() || isMobile.Windows());
+        }
+};
+
+$(document).on('keyup','.numbersOnly',function(){
+
+	var inputval = $(this).val();
+	if(inputval != '0'){
+		inputval = inputval.replace(/(^0+)/, "");
+	}
+	$(this).val(inputval.replace(/[^0-9]/gi,''));
+
+});
+
+function logout(){
+	var msg = "로그아웃 하시겠습니까?";
+	var con = confirm(msg);
+
+	if(con){
+		clearTimer();
+		location.href = "/portal/member/logout.do?menuNo=200473";
+	}
+}
+
+/*===========================================================================================
+세션 타이머 관련 함수
+WorkArea Body에 essionTimer INCLUDE 해줘야 함
+===========================================================================================*/
+function addTimer()
+{
+	fvSesSecond = 10*60;
+	clearTimeout(timerchecker);
+	initTimer();
+}
+
+function clearTimer()
+{
+	fvSesSecond = 10*60;
+	clearTimeout(timerchecker);
+}
+
+function initTimer()
+{
+	var rMinute = parseInt(fvSesSecond / 60);
+	var rSecond = fvSesSecond % 60;
+
+	if(fvSesSecond > 59){
+		$("#timeoutArea").text( (rMinute < 10 ? "0"+rMinute:rMinute) +":"+ (rSecond<10 ? "0"+rSecond:rSecond));
+		$("#addTimeoutArea").text( (rSecond<10 ? "0"+rSecond:rSecond));
+
+		fvSesSecond--;
+		timerchecker = setTimeout("initTimer()",1000);
+	}
+	else
+	{
+		$('body').css({"overflow": "hidden"});
+		$('#addTimer').removeClass('hide');
+
+		$("#timeoutArea").text( (rMinute < 10 ? "0"+rMinute:rMinute) +":"+ (rSecond<10 ? "0"+rSecond:rSecond));
+		$("#addTimeoutArea").text( (rSecond<10 ? "0"+rSecond:rSecond));
+
+		fvSesSecond--;
+		timerchecker = setTimeout("initTimer()",1000);
+
+		if( fvSesSecond < 0 )
+		{
+			stopTimePop();
+		}
+	}
+}
+
+function addTimePop()
+{
+	addTimer();
+	$('body').css({"overflow": ""});
+	$('#addTimer').addClass('hide');
+}
+
+function stopTimePop()
+{
+	clearTimer();
+	$('body').css({"overflow": ""});
+	$('#addTimer').addClass('hide');
+
+	location.href = "/portal/member/logout.do?menuNo=200473";
+}
+</script>
+<header>
+<style>
+@media print {
+	@page {
+	  size: auto;
+	  margin: 0;  /* this affects the margin in the printer settings */
+	}
+	.nonPrint{opacity:0 !important;visibility:hidden !important;display:none !important;height:0;width:0;margin:0;padding:0;}
+	.wrap{padding:0px !important;}
+	.content {
+	-webkit-print-color-adjust: exact !important;
+	visibility: visible;
+	height: 100%;
+	width: 100% !important;
+/*	position: relative; */
+	top: 0;
+	left: 0;
+	margin: 0;
+	padding: 15px;
+	font-size: 14px;
+	line-height: 18px;
+	overflow: visible;
+	}
+}
+</style>
+<div class="wrap nonPrint">
+	<div class="inner">
+		<button type="button" class="btn_gnb">전체메뉴</button>
+		<h1><a href="/">중앙선거여론조사심의위원회</a></h1>
+		<!-- <p class="bold" style="color:red; font-size:25px;"> (  TEST SERVER  )</p> -->
+		<nav class="tnb">
+			<a href="/portal/member/join01.do?menuNo=200475" class="tm">회원가입</a>
+			<a href="/portal/member/forLogin.do?menuNo=200473" class="tm">로그인</a>
+			<a href="/portal/member/userInfoList.do?menuNo=200473" class="tm">마이페이지</a>
+				</nav>
+		<nav class="gnb">
+			<div class="menu">
+				<div class="mo">
+					<button type="button" class="btn_gnb_x">메뉴닫기</button>
+					<!--로그인  -->
+					<a href="/portal/member/forLogin.do?menuNo=200473" class="btn_login">로그인해주세요.</a>
+					<!---->
+				</div>
+				<ul>
+					<li>
+						<p class="mm jq-toggle">위원회소개</p>
+						<span class="sm">
+							<a href="/portal/content/view.do?menuNo=310001" class="sm">위원장 인사말</a>
+							<a href="/portal/content/view.do?menuNo=310002" class="sm">위원소개</a>
+							<a href="/portal/content/view.do?menuNo=310003" class="sm">조직 및 직무</a>
+							<a href="/portal/content/view.do?menuNo=310004" class="sm">오시는 길</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">제도안내</p>
+						<span>
+							<a href="/portal/content/view.do?menuNo=300009" class="sm">업무흐름</a>
+							<a href="/portal/content/view.do?menuNo=300002" class="sm">조사기관 등록</a>
+							<a href="/portal/content/view.do?menuNo=300003" class="sm">여론조사 사전신고</a>
+							<a href="/portal/content/view.do?menuNo=300004" class="sm">휴대전화 가상번호</a>
+							<a href="/portal/content/view.do?menuNo=300005" class="sm">여론조사 실시</a>
+							<a href="/portal/content/view.do?menuNo=300006" class="sm">조사결과 등록</a>
+							<a href="/portal/content/view.do?menuNo=300007" class="sm">조사결과 공표∙보도</a>
+							<a href="/portal/content/view.do?menuNo=300008" class="sm">여론조사 심의∙조치</a>
+							<a href="/portal/content/view.do?menuNo=300010" class="sm">관련법규</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">공지·자료</p>
+						<span>
+							<a href="/portal/bbs/B0000001/list.do?menuNo=200468" class="sm">공지사항</a>
+							<a href="/portal/bbs/B0000002/list.do?menuNo=200470" class="sm">자료실</a>
+							<a href="/portal/bbs/B0000046/list.do" class="sm">FAQ</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">여론조사결과 보기</p>
+						<span>
+							<a href="/portal/bbs/B0000005/list.do?menuNo=200467" class="sm">여론조사결과 보기</a>
+							<a href="/portal/bbs/B0000025/list.do?menuNo=200500" class="sm">여론조사결과 주요 데이터</a>
+						</span>
+					</li>
+					<li>
+						<a href="/portal/content/onvy/list.do" class="nw jq-toggle">여론조사기관 보기</a>
+					</li>
+					<li>
+						<p class="mm jq-toggle">심의·조치</p>
+						<span>
+							<a href="/portal/bbs/B0000007/list.do?menuNo=200469" class="sm">선거여론조사기관 조치현황</a>
+							<a href="/portal/content/qpis/list.do" class="sm">공표·보도 불가현황</a>
+							<a href="/portal/bbs/B0000045/list.do?menuNo=200480" class="sm">유형별 위반사례</a>
+							<a href="/portal/bbs/B0000004/intro.do?menuNo=200471" class="sm">불공정 여론조사 신고</a>
+						</span>
+					</li>
+					<script>
+								function loginAlert(){ 
+									alert("로그인이 필요한 페이지입니다. 로그인페이지로 이동하시겠습니까?"); 								
+									location.href = "/portal/member/forLogin.do"; 
+								}
+							</script>
+							<li class="pc">
+								<a href="javascript:loginAlert();" class="mm">조사기관,정당,위탁단체</a>
+							</li>
+						</ul>
+			</div>
+		</nav>
+	</div><!--inner-->
+</div><!--wrap-->
+</header>
+<!--  -->
+
+
+
+
+<link rel="stylesheet" type="text/css" href="/css/common.css"/>
+<link rel="stylesheet" type="text/css" href="/css/content.css"/>
+<link rel="stylesheet" href="/css/jquery-ui.css">
+<link rel="stylesheet" type="text/css" href="/css/print.css" media="print"/>
+<script type="text/javascript" src="/js/jquery.min.js"></script>
+<script type="text/javascript" src="/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="/js/miya_validator.js"></script>
+<script type="text/javascript" src="/js/jquery.bxslider.js"></script>
+<script type="text/javascript" src="/js/app.js" ></script>
+<script type="text/javascript">
+depth=1;
+$(document).ready(function () {
+	if('javax.servlet.jsp.el.ImplicitObjectELResolver$ImplicitObjects$5@32385dba' != null){
+		$('#searchTimeLabel').text($('#searchTime option:selected').text());//선거명 SelectBox3
+		$('#pollGubuncdLabel').text($('#pollGubuncd option:selected').text());//조사의뢰자
+		$('#searchCndLabel').text($('#searchCnd option:selected').text());//조사지역
+	}
+
+	$("button.btn.h_xs.line02.ico.print").click(function(){
+		history.pushState(null, null, null);
+		$(window).bind("hashchange", function(){
+		history.pushState(null, null, null);
+			});
+		window.print();
+	});
+
+	/* datepicker setting s */
+	$.datepicker.regional['ko'] = {
+	    closeText: '닫기',
+	    prevText: '이전달',
+	    nextText: '다음달',
+	    currentText: '오늘',
+	    monthNames: ['1월(JAN)','2월(FEB)','3월(MAR)','4월(APR)','5월(MAY)','6월(JUN)',
+	    '7월(JUL)','8월(AUG)','9월(SEP)','10월(OCT)','11월(NOV)','12월(DEC)'],
+	    monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+	    '7월','8월','9월','10월','11월','12월'],
+	    dayNames: ['일','월','화','수','목','금','토'],
+	    dayNamesShort: ['일','월','화','수','목','금','토'],
+	    dayNamesMin: ['일','월','화','수','목','금','토'],
+	    weekHeader: 'Wk',
+	    dateFormat: 'yy-mm-dd',
+	    firstDay: 0,
+	    isRTL: false,
+	    showMonthAfterYear: true,
+	    yearSuffix: '',
+	    showOn: 'both',
+	    buttonText: "",
+	    changeMonth: true,
+	    changeYear: true,
+	    showButtonPanel: false,
+	    yearRange: 'c-99:c+99',
+	};
+	$.datepicker.setDefaults($.datepicker.regional['ko']);
+
+	$('#sdate').datepicker();
+	$('#sdate').datepicker("option", "maxDate", $("#edate").val());
+	$('#sdate').datepicker("option", "onClose", function ( selectedDate ) {
+	    $("#edate").datepicker( "option", "minDate", selectedDate );
+	});
+
+	$('#edate').datepicker();
+	$('#edate').datepicker("option", "minDate", $("#sdate").val());
+	$('#edate').datepicker("option", "onClose", function ( selectedDate ) {
+	    $("#sdate").datepicker( "option", "maxDate", selectedDate );
+	});
+
+	$('#pdate').datepicker();
+	$('#pdate').datepicker("option", "minDate", $("#sdate").val());
+
+	//검색 시작일자 show
+	$('#startBtn').click(function() {
+   	 	$('#sdate').datepicker('show');
+ 	});
+
+	//검색 종료일자 show
+	$('#endBtn').click(function() {
+   	 	$('#edate').datepicker('show');
+ 	});
+
+	//검색 종료일자 show
+	$('#pBtn').click(function() {
+   	 	$('#pdate').datepicker('show');
+ 	});
+
+});
+
+$(function() {
+
+	
+	
+		$("#search2").hide();
+	
+
+	$("#searchTime").change(function(){
+
+		if($("#searchTime").val() == '3')
+		{
+			$("#search1").hide();
+			$("#search2").show();
+			$("#sdate").val("");
+			$("#edate").val("");
+		}
+		else
+		{
+			$("#search1").show();
+			$("#search2").hide();
+			$("#pdate").val("");
+		}
+
+	});
+});
+
+
+//-->
+
+/* 엑셀다운로드 */
+	function excel_download()
+	{
+		var frm = document.frm;
+		frm.action = "/portal/bbs/B0000005/downloadPortalExcel.do";
+		frm.submit();
+	}
+
+	function search(){
+		var frm = document.frm;
+		frm.action = "/portal/bbs/B0000005/list.do?menuNo=200467";
+		frm.submit();
+	}
+
+	function searchReset() {
+		$("#sdate").val('');
+		$("#edate").val('');
+		$("#pdate").val('');
+		$("#searchCnd").val('');
+		$("#searchTime").val('');
+		$("#pollGubuncd").val('');
+		$("#searchWrd").val('');
+
+		$('#searchTimeLabel').text(':: 날짜구분 ::');
+		$('#pollGubuncdLabel').text(':: 선거구분 ::');
+		$('#searchCndLabel').text(':: 검색어구분 ::');
+
+		$("#pdate").datepicker( "option", "minDate", "1000-01-01" );
+		$("#edate").datepicker( "option", "minDate", "1000-01-01" );
+		$("#sdate").datepicker( "option", "maxDate", "9999-01-01" );
+	}
+
+</script>
+<section class="sub">
+<div class="wrap">
+	<div class="inner">
+	
+<nav class="lnb nonPrint">
+	<h2><i></i>여론조사결과 보기</h2>
+	<ul>
+		<li><a href="/portal/bbs/B0000005/list.do?menuNo=200467">여론조사결과 보기</a></li>
+		<li><a href="/portal/bbs/B0000025/list.do?menuNo=200500">여론조사결과 주요 데이터</a></li>
+	</ul>
+</nav>
+
+		<h3>여론조사결과 현황</h3>
+		<div class="content">
+			<div class="path">
+				<p>HOME</p>
+				<p>여론조사결과 보기</p>
+				<p>여론조사결과 보기</p>
+				<button type="button" class="btn h_xs line02 ico print"><i>인쇄</i></button>
+			</div>
+			<ul class="info line">
+				<li>아래 여론조사 결과는「공직선거법」및「선거여론조사기준」에 따라 등록된 것으로 <b>선거여론조사심의위원회에서 사전에 검증한 자료가 아니며</b>, 이의신청 또는 모니터링 결과 <b>법이나 기준에 위반된 사안이 발견되면 관련 규정에 따라 처벌될 수 있음</b>을 알려드립니다.</li>
+				<li>현재 선거여론조사 등록제의 취지를 제고하기 위해 '접촉률'을 공개하고 있으며, 접촉률과 응답률(협조율)을 통해 국제기준(미국여론조사협회)의 응답률을 산출할 수 있습니다.<br>
+				<div style="margin: 5px; border: 1px solid; padding: 5px;">접촉률 × 응답률(협조율) = 국제 기준(AAPOR) 응답률</div>
+				</li>
+			</ul>
+			<form name="frm" method="post" class="sh_set">
+			<div class="box bg srh">
+				<div class="bind pc">
+					<p class="txt tit">날짜구분</p>
+					<div class="select w_sm fl">
+						<label id="searchTimeLabel">:: 날짜선택 ::</label>
+						<select id="searchTime" name="searchTime" class="input_select w100" title="검색어 구분">
+							<option  >:: 날짜구분 ::</option>
+							<option value="1"  >등록일</option>
+							<option value="2"  >최초공표일</option>
+							<option value="3"  >조사일시</option>
+						</select>
+					</div>
+					<span id="search1">
+					<div class="day w_md fl"><input type="text" class="input" id="sdate" name="sdate" value="" title="시작일" maxlength="10"><button id="startBtn" type="button" class="btn">날짜선택</button></div>
+						<i class="txt fl">~</i>
+						<div class="day w_md fl"><input type="text" class="input" id="edate" name="edate" value="" title="마지막일" maxlength="10"><button id="endBtn" type="button" class="btn">날짜선택</button></div>
+					</span>
+					<span id="search2">
+						<div class="day w_sm fl"><input type="text" class="input" id="pdate" name="pdate" value="" title="마지막일" maxlength="10"><button id="pBtn" type="button" class="btn">날짜선택</button></div>
+					</span>
+				</div>
+				<div class="bind">
+					<p class="txt tit">선거구분</p>
+					<div class="select w_lg fl">
+						<label id="pollGubuncdLabel">:: 선거선택 ::</label>
+						<select name="pollGubuncd" id="pollGubuncd">
+							<option value="">:: 선거구분 ::</option>
+							
+							<option value="VT044" >제22대 대통령선거</option>
+							
+							<option value="VT039" >2026년 재·보궐선거</option>
+							
+							<option value="VT026" >제9회 전국동시지방선거</option>
+							
+							<option value="VT046" >제23대 국회의원선거</option>
+							
+							<option value="VT027" >제21대 대통령선거</option>
+							
+							<option value="VTO032" >2025년 상반기 재·보궐선거</option>
+							
+							<option value="VT031" >2024년 재·보궐선거</option>
+							
+							<option value="VT025" >제22대 국회의원선거</option>
+							
+							<option value="VT029" >2023년 하반기 재·보궐선거</option>
+							
+							<option value="VT028" >2023년 상반기 재·보궐선거</option>
+							
+							<option value="VT022" >제8회 전국동시지방선거</option>
+							
+							<option value="VT019" >제20대 대통령선거</option>
+							
+							<option value="VT024" >2022년 재·보궐선거</option>
+							
+							<option value="VT023" >2021년 재·보궐선거</option>
+							
+							<option value="VT018" >제21대 국회의원선거</option>
+							
+							<option value="VT021" >2020년 재·보궐선거</option>
+							
+							<option value="VT020" >2019년 재·보궐선거</option>
+							
+							<option value="VT016" >제7회 전국동시지방선거</option>
+							
+							<option value="VT017" >2018년 재·보궐선거</option>
+							
+							<option value="VT011" >제19대 대통령선거</option>
+							
+							<option value="VT006" >제20대 국회의원선거</option>
+							
+							<option value="VT007" >2016년 재·보궐선거</option>
+							
+							<option value="VT005" >2015년 하반기 재·보궐선거</option>
+							
+							<option value="VT004" >2015년 상반기 재·보궐선거</option>
+							
+							<option value="VT013" >제6회 전국동시지방선거</option>
+							
+							<option value="VT002" >2014년 상반기 재·보궐선거</option>
+							
+							<option value="VT012" >기타</option>
+							
+							<option value="VT003" >-</option>
+							
+							<option value="VT010" >-</option>
+							
+							<option value="VT038" >-</option>
+							
+							<option value="VT030" >-</option>
+							
+							<option value="VT032" >-</option>
+							
+							<option value="VT045" >-</option>
+							
+							<option value="VT034" >-</option>
+							
+							<option value="VT035" >-</option>
+							
+							<option value="VT036" >-</option>
+							
+							<option value="VT037" >-</option>
+							
+							<option value="VT040" >-</option>
+							
+							<option value="VT041" >-</option>
+							
+							<option value="VT042" >-</option>
+							
+							<option value="VT043" >-</option>
+							
+							<option value="VT033" >-</option>
+							
+						</select>
+					</div>
+				</div>
+				<div class="bind">
+					<p class="txt tit">검색하기</p>
+					<div class="select w_sm fl">
+						<label id="searchCndLabel">:: 검색어구분 ::</label>
+						<select id="searchCnd" name="searchCnd" class="input_select w100" title="검색어 구분">
+							<option  >:: 검색어구분 ::</option>
+							<option value="5"  >등록번호</option>
+							<option value="1"  >조사기관명</option>
+							<option value="2"  >조사의뢰자</option>
+
+
+            <option value="6"  >조사방법</option>
+                                                        <option value="11"  >표본 추출틀</option>
+
+							<option value="3"  >여론조사명칭(지역)</option>
+							<option value="4"  >시·도</option>
+						</select>
+					</div>
+					<div class="find srh w_lg fl">
+						<input type="text" id="searchWrd" name="searchWrd" maxlength="100" value="" onkeypress="if(event.keyCode==13) {search(); return false;}"  class="input" placeholder="검색어를 입력하세요.">
+						<button type="button" class="btn h_md color01" onclick="search();"><i>검색</i></button>
+					</div>
+					<button type="button" class="btn w_xs h_md line01 pc"  onclick="javascript:searchReset()">초기화</button>
+				</div>
+			</div>
+			</form>
+			<p class="total">Total <i>16434건</i></p>
+			
+				
+					<div class="board">
+						<div class="grid">
+							<p class="row th">
+								<span class="col">등록번호</span>
+								<span class="col">조사기관명</span>
+								<span class="col" style="width:80px;">조사의뢰자</span>
+								<span class="col" style="width:77px;">조사방법</span>
+								<span class="col" style="width:77px;">표본 추출틀</span>
+								<span class="col">여론조사 명칭(지역)</span>
+								<span class="col" style="width:72px;">등록일</span>
+								<span class="col" style="width:66px;">시·도</span>
+							</p>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19366&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17136</span>
+									<span class="col"><i class="tit"></i>(주)리얼미터</span>
+									<span class="col"><i class="tit"></i>에너지경제신문</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 정당지지도 6월 3주차 주간집계</span>
+									<span class="col"><i class="tit"></i>2026-06-19</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19365&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17135</span>
+									<span class="col"><i class="tit"></i>(주)한국리서치</span>
+									<span class="col"><i class="tit"></i>시사IN</span>
+									<span class="col"><i class="tit"></i>인터넷조사</span>
+									<span class="col"><i class="tit"></i>기타</br>자체 구축 패널</span>
+									<span class="col tl"><i class="tit"></i>전국   광역단체장선거 광역의원비례대표선거 정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-18</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19364&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17134</span>
+									<span class="col"><i class="tit"></i>(주)코리아정보리서치</span>
+									<span class="col"><i class="tit"></i>천지일보</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 대통령선거 정당지지도 국정현안 등</span>
+									<span class="col"><i class="tit"></i>2026-06-17</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19362&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17133</span>
+									<span class="col"><i class="tit"></i>조원씨앤아이</span>
+									<span class="col"><i class="tit"></i>스트레이트뉴스</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-16</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19359&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17132</span>
+									<span class="col"><i class="tit"></i>(주)에브리리서치 </span>
+									<span class="col"><i class="tit"></i>(주)에브리뉴스</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국 전체 정기(정례)조사정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-15</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19358&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17131</span>
+									<span class="col"><i class="tit"></i>여론조사공정(주)</span>
+									<span class="col"><i class="tit"></i>펜앤마이크</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국 전체 정당지지도대통령선거 </span>
+									<span class="col"><i class="tit"></i>2026-06-15</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19357&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17130</span>
+									<span class="col"><i class="tit"></i>(주)여론조사꽃</span>
+									<span class="col"><i class="tit"></i>(주)여론조사꽃</span>
+									<span class="col"><i class="tit"></i>무선전화면접</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>휴대전화 가상번호</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-13</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19356&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17129</span>
+									<span class="col"><i class="tit"></i>(주)여론조사꽃</span>
+									<span class="col"><i class="tit"></i>(주)여론조사꽃</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-13</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19355&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17128</span>
+									<span class="col"><i class="tit"></i>(주)리얼미터</span>
+									<span class="col"><i class="tit"></i>에너지경제신문</span>
+									<span class="col"><i class="tit"></i>무선 ARS</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>RDD</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 정당지지도 6월 2주차 주간집계</span>
+									<span class="col"><i class="tit"></i>2026-06-12</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+								<a href="/portal/bbs/B0000005/view.do?nttId=19354&menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&amp;pageIndex=1" class="row tr">
+									<span class="col"><i class="tit"></i>17127</span>
+									<span class="col"><i class="tit"></i>한국갤럽조사연구소</span>
+									<span class="col"><i class="tit"></i>한국갤럽 자체 조사</span>
+									<span class="col"><i class="tit"></i>무선전화면접</span>
+									<span class="col"><i class="tit"></i>무선전화번호</br>휴대전화 가상번호</span>
+									<span class="col tl"><i class="tit"></i>전국   정기(정례)조사 대통령선거 정당지지도 </span>
+									<span class="col"><i class="tit"></i>2026-06-11</span>
+									<span class="col"><i class="tit"></i>전국</span>
+								</a>
+							
+						</div>
+					</div>
+					<div class="pager">
+					<span><button type="button" class="page cont first" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=1'">처음</button><button type="button" class="page num on">1</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=2'">2</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=3'">3</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=4'">4</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=5'">5</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=6'">6</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=7'">7</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=8'">8</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=9'">9</button><button type="button" class="page num" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=10'">10</button><button type="button" class="page cont next" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=11'">다음</button><button type="button" class="page cont last" onclick="location.href='/portal/bbs/B0000005/list.do?menuNo=200467&searchTime=&sdate=&edate=&pdate=&pollGubuncd=&searchCnd=&searchWrd=&pageIndex=1644'">맨끝</button></span>
+					</div>
+				
+				
+			
+		</div>
+		
+<div class="quick">
+	<ul>
+		
+			
+			
+			
+					<li><a href="/portal/bbs/B0000005/list.do?menuNo=200467" class="ico1">여론조사결과<br>보기</a></li>
+					<li><a href="/portal/content/onvy/list.do" class="ico2">선거여론조사<br>기관보기</a></li>
+			
+		
+		<li class="top"><button type="button" class="btn_top"><i>TOP</i></button></li>
+	</ul>
+</div>
+	</div>
+</div>
+</section>
+<!--  -->
+<!-- 안내문 팝업 시작 -->
+<article id="addTimer" class="timer sure hide">
+	<div class="wrap">
+		<div class="inner">
+			<div class="title">
+				<h3><i>자동로그아웃안내</i></h3>
+		    </div>
+			<div>
+			    	<p style="text-align: center; font-size: 20px; padding: 14px 0px;">자동 로그아웃 남은 시간</p>
+					<p style="font-size: 15px; padding: 6px 0px;">회원님의 안전한 정보보호를 위해 로그인 후 약 10분 동안 이용이 없어 자동로그아웃 됩니다.</p>
+					<p style="font-size: 15px; padding: 6px 0px;">로그인 시간을 연장하시려면 로그인 연장하기 버튼을 클릭하여 주십시오</p>
+					<span id="addTimeoutArea" style="text-align:center; display: inline-block; height: 25px; line-height: 25px; color: #666; font-size: 60px; padding: 30px 0px;">00</span>
+				<div class="btns">
+					<button type="button" href="javascript:;" onclick="addTimePop()" class="btn h_lg color01" >로그인 연장하기</button>
+					<button type="button" href="javascript:;" onclick="stopTimePop()" class="btn h_lg color01" >지금 로그아웃</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</article>
+<!-- 안내문 팝업 종료 -->
+</nav><footer>
+	<div class="wrap nonPrint">
+
+		<article class="link" >
+			<div class="inner" >
+				<div id="relationSite" class="site" >
+					<p>관련사이트</p>
+					<span>
+					<a href="http://ikora.or.kr" target="_blank">한국조사협회</a>
+					<a href="http://kopra.kr" target="_blank">한국정치조사협회</a>
+					<a href="http://kasr.org" target="_blank">한국조사연구학회</a>
+					<a href="http://www.kba.or.kr" target="_blank">한국방송협회</a>
+					<a href="http://presskorea.or.kr" target="_blank">한국신문협회</a>
+					<a href="http://kina.or.kr" target="_blank">한국인터넷신문협회</a>
+					<a href="http://www.kcta.or.kr" target="_blank">한국케이블TV방송협회</a>
+				</span>
+				</div>
+				<div id="sidoElection" class="site">
+					<p>시・도선거관리위원회</p>
+					<span onm>
+					<a href="" target="_blank">시・도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/su/main/main.do" target="_blank">서울특별시선거관리위원회</a>
+					<a href="https://su.nec.go.kr/bs/main/main.do" target="_blank">부산선거관리위원회</a>
+					<a href="https://su.nec.go.kr/dg/main/main.do" target="_blank">대구선거관리위원회</a>
+					<a href="https://su.nec.go.kr/ic/main/main.do" target="_blank">인천선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gj/main/main.do" target="_blank">광주선거관리위원회</a>
+					<a href="https://su.nec.go.kr/dj/main/main.do" target="_blank">대전선거관리위원회</a>
+					<a href="https://su.nec.go.kr/us/main/main.do" target="_blank">울산선거관리위원회</a>
+					<a href="https://su.nec.go.kr/sj/main/main.do" target="_blank">세종특별자치시선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gg/main/main.do" target="_blank">경기도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gw/main/main.do" target="_blank">강원도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/cb/main/main.do" target="_blank">충청북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/cn/main/main.do" target="_blank">충청남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jb/main/main.do" target="_blank">전라북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jn/main/main.do" target="_blank">전라남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gb/main/main.do" target="_blank">경상북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gn/main/main.do" target="_blank">경상남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jj/main/main.do" target="_blank">제주도선거관리위원회</a>
+				</span>
+				</div>
+				<nav class="fnb">
+					<a href="/portal/content/view.do?menuNo=200480">개인정보처리방침</a>
+					<a href="/portal/content/view.do?menuNo=200482">저작권정책</a>
+					<a href="/portal/content/view.do?menuNo=200486">사이트맵</a>
+					<a href="/portal/content/view.do?menuNo=200481">이용안내</a>
+				</nav>
+			</div>
+		</article>
+		<article class="copyright">
+			<div class="inner">
+				<!--
+                <ul>
+                    <li class="tel">대표전화 : <a href="tel:025040342">02) 504 - 0342 ~ 3</a></li>
+                    <li>선거법질의, 신고제보 : <a href="tel:1390">국번없이 1390</a></li>
+                    <li class="mail">e - mail : <a href="mailto:nesdc@nec.go.kr">nesdc@nec.go.kr</a></li>
+                    <li>Fax : 0505 - 058 - 1175 </li>
+                    <li class="adrs">[08806] 서울시 관악구 남부순환로 272길 23(구 남현동 1064-7번지) 중앙선거관리위원회 관악청사 2층 204호, <i>중앙선거여론조사심의위원회</i></li>
+                </ul>
+                -->
+				<ul>
+					<li class="tel">중앙여심위 : <a href="tel:025040342">02) 504 - 0342 ~ 3</a></li>
+					<li>휴대전화 가상번호 문의 : (중앙여심위) <a href="tel:0232993853">02) 3299 - 3853</a>, (정당과) <a href="tel:0232948353">02) 3294 - 8353</a>, (위탁선거과) <a href="tel:0232948339">02) 3294 - 8339</a></li>
+				</ul>
+				<ul class="inner_sub" style="padding-top:0px;">
+					<li class="tel">선거법질의, 신고제보 : <a href="tel:1390">국번없이 1390</a></li>
+					<li class="mail">e - mail : <a href="mailto:nesdc@nec.go.kr">nesdc@nec.go.kr</a></li>
+					<li>Fax : 0505 - 058 - 1175 </li>
+					<li class="adrs">[08806] 서울시 관악구 남부순환로 272길 23(구 남현동 1064-7번지) 중앙선거관리위원회 관악청사 2층 204호, <i>중앙선거여론조사심의위원회</i></li>
+				</ul>
+				<p class="warning">본 홈페이지에 게시된 이메일 주소 자동수집을 거부하여, 이를 위반 시, 정보통신망법에 의하여 처벌됨을 유념하시기 바랍니다.</p>
+				<p class="copy p">Copyright© 2018 National Election Survey Deliberation Commission.</p>
+				<p class="copy m">Copyright© nesdc co,ltd.</p>
+				<button type="button" class="btn_top">TOP</button>
+			</div>
+		</article>
+	</div>
+
+</footer>
+<style>
+	.copyright ul.inner_sub li:nth-of-type(1):before{content:none !important;width:0px !important;left:0px !important;display:none !important;margin-left:0px !important;padding-left:0px !important;}
+
+</style>
+<script>
+	$(document).ready(function() {
+
+		/* TABLE SCROLL */
+		$(function(){
+			$(window).resize(function () {
+				if ($(this).width() < 960) {
+					$(".scroll").css({"width": ($(this).width()-20) +"px"});
+				} else {
+					$(".scroll").css({"width": 100 +"%"});
+				}
+			}).resize();
+		});
+		/* TOP FIX */
+		$(function(){
+			$(window).scroll(function () {
+				if ($(this).scrollTop() > 100) {
+					$('header').addClass('fix');
+					$('.quick').addClass('fix');
+				} else {
+					$('header').removeClass('fix');
+					$('.quick').removeClass('fix');
+				}
+			});
+		});
+		/* GNB */
+		$('.btn_gnb').click(function(){
+			$('.gnb').animate({left: '0'});
+		});
+		$('.btn_gnb_x').click(function(){
+			$('.gnb').animate({left: '-300px'});
+		});
+		/* DEPTH */
+		if(depth>0){
+			$(".lnb > ul > li:eq("+(depth-1)+")").addClass('on');
+		};
+		/* SLIDE */
+		$('.slide').bxSlider({
+			mode: 'horizontal',
+			speed: 1500,
+			pager: true,
+			autoControls: true,
+			auto: true,
+			autoHover: true,
+		});
+		$('.slide_logo').bxSlider({
+			mode: 'horizontal',
+			speed: 3000,
+			minSlides : 2,
+			maxSlides : 5,
+			slideWidth : 160,
+			slideMargin : 10,
+			pager: false,
+			auto: true,
+			autoHover: true,
+		});
+		/* GRID */
+		var colCount = $($(".grid .row.th")[0]).find(".col").length;
+		var trCount = $(".grid .row.tr").length;
+
+		for(var j = 0 ; j <trCount ; j++){
+			for(var i = 0; i < colCount; i++){
+				var gridText = $(".grid .row.th .col").eq(i).text();
+				$($($(".grid .row.tr")[j]).find(".col")[i]).find("i").text(gridText);
+			}
+		};
+		/* SITE */
+		$('.site').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$(this).addClass('on');
+			}
+		});
+		$('.site').mouseleave(function(){
+			$(this).removeClass('on');
+		});
+		/* SCROLL */
+		$('.scroll').hover(function(){
+			$(this).addClass('on');
+		});
+		$('.scroll').scroll(function(){
+			$(this).addClass('on');
+		});
+		/* TOGGLE */
+		$('.jq-toggle').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$(this).addClass('on');
+			}
+		});
+		/* TAP */
+		$('.tapt').click(function(){
+			$(this).siblings('.tapt').removeClass('on');
+			$(this).addClass('on');
+			$(this).parent('.tap').siblings('.tapview').children('.tapc').removeClass('on');
+			$(this).parent('.tap').siblings('.tapview').children('.tapc').eq($(this).index()).addClass('on');
+			var cateText = $(this).text();
+			$(this).parents().siblings('label').text(cateText);
+			$(this).parents().siblings('label').removeClass('on');
+		});
+		/* STEP */
+		$('.step.jq > .tep').click(function(){
+			$('.tep').removeClass('ok');
+			$(this).siblings('.tep').removeClass('on');
+			$(this).prev('.tep').addClass('ok');
+			$(this).addClass('on');
+		});
+		/* SELECT */
+		$('.select').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$('.select').removeClass('on');
+				$(this).addClass('on');
+			}
+		});
+		$('select').change(function(){
+			var selectText = $(this).children('option:selected').text();
+			$(this).siblings('label').text(selectText);
+		});
+		/* POPUP */
+		$('.jq_popup').click(function(){
+			$('body').css({"overflow": "hidden"});
+			$('.popup').removeClass('hide');
+		});
+		$('.popup .btn_x').click(function(){
+			$('body').css({"overflow": ""});
+			$('.popup').addClass('hide');
+		});
+		$('.popup .jq_x').click(function(){
+			$('body').css({"overflow": ""});
+			$('.popup').addClass('hide');
+		});
+		/* LAYER */
+		$('.jq_layer').click(function(){
+			$('.layer').hide();
+			$(this).next('.layer').show();
+		});
+		$('.layer .btn_x').click(function(){
+			$('.layer').hide();
+		});
+		/* BTN_TOP */
+		$('.btn_top').click(function () {
+			$('body,html').animate({
+				scrollTop: 0
+			}, 500);
+			return false;
+		});
+	})
+</script>
+</body>
+</html>

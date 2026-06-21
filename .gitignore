@@ -1,0 +1,10 @@
+/bin/
+*.out
+*.pdf
+*.xlsx
+*.xls
+*.hwp
+*.hwpx
+/downloads/
+/out/
+.DS_Store

@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<title>중앙선거여론조사심의위원회</title>
+<link rel="stylesheet" type="text/css" href="/css/common.css"/>
+<link rel="stylesheet" type="text/css" href="/css/content.css"/>
+<link rel="stylesheet" type="text/css" href="/css/NotoSansKR-Hestia.css">
+<script type="text/javascript" src="/js/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/js/placeholders.min.js"></script>
+<script type="text/javascript" src="/js/jquery.validate.js"></script>
+<script type="text/javascript" src="/js/miya_validator.js"></script>
+
+<link rel="stylesheet" href="/css/jquery-ui.css">
+<link rel="stylesheet" type="text/css" href="/css/print.css" media="print"/>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="/js/jquery.bxslider.js"></script>
+
+<!--[if lt IE 9]>
+	<script type="text/javascript" src="js/IE9.js"></script>
+   	<script type="text/javascript" src="js/html5shiv.js"></script>
+<![endif]-->
+
+<script type="text/javascript">
+
+depth=1;
+
+$(document).ready(function () {
+	 $("button.btn.h_xs.line02.ico.print").click(function(){
+			history.pushState(null, null, null);
+			$(window).bind("hashchange", function(){
+			history.pushState(null, null, null);
+				});
+			window.print();
+		});
+
+	$('#searchCndLabel').text($('#searchCnd option:selected').text());//검색하기
+
+
+	/* 버튼에도 달력 적용*/
+	$('#sdateBtn').click(function() {
+   		$('#sdate').datepicker('show');
+ 	});
+	$('#edateBtn').click(function() {
+   	 	$('#edate').datepicker('show');
+ 	});
+
+	/* datepicker setting s */
+    $.datepicker.regional['ko'] = {
+        closeText: '닫기',
+        prevText: '이전달',
+        nextText: '다음달',
+        currentText: '오늘',
+        monthNames: ['1월(JAN)','2월(FEB)','3월(MAR)','4월(APR)','5월(MAY)','6월(JUN)',
+        '7월(JUL)','8월(AUG)','9월(SEP)','10월(OCT)','11월(NOV)','12월(DEC)'],
+        monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+        '7월','8월','9월','10월','11월','12월'],
+        dayNames: ['일','월','화','수','목','금','토'],
+        dayNamesShort: ['일','월','화','수','목','금','토'],
+        dayNamesMin: ['일','월','화','수','목','금','토'],
+        weekHeader: 'Wk',
+        dateFormat: 'yy-mm-dd',
+        firstDay: 0,
+        isRTL: false,
+        showMonthAfterYear: true,
+        yearSuffix: '',
+        showOn: 'both',
+        buttonText: "",
+        changeMonth: true,
+        changeYear: true,
+        showButtonPanel: false,
+        yearRange: 'c-99:c+99',
+    };
+    $.datepicker.setDefaults($.datepicker.regional['ko']);
+
+    $('#sdate').datepicker();
+    $('#sdate').datepicker("option", "maxDate", $("#edate").val());
+    $('#sdate').datepicker("option", "onClose", function ( selectedDate ) {
+        $("#edate").datepicker( "option", "minDate", selectedDate );
+    });
+
+    $('#edate').datepicker();
+    $('#edate').datepicker("option", "minDate", $("#sdate").val());
+    $('#edate').datepicker("option", "onClose", function ( selectedDate ) {
+        $("#sdate").datepicker( "option", "maxDate", selectedDate );
+    });
+    /* datepicker setting e */
+
+
+
+	/* $("button.btn.w_xs.h_md.line01.pc").click(function(e) {
+		location.href = "/portal/content/onvy/list.do";
+	}); */
+
+});
+
+function searchReset() {
+
+	$("#sdate").val('');
+	$("#edate").val('');
+
+	$("#searchCnd").val('');
+	$("#stributaryLabel").text(":: 검색어구분 ::");
+
+	$("#searchWrd").val('');
+	$('#edate, #sdate').datepicker("option", "minDate", "1000-01-01");
+	$('#edate, #sdate').datepicker("option", "maxDate", "9999-01-01");
+}
+
+
+function btnClick(){
+	var form = document.frm;
+	var v = new MiyaValidator(form);
+	/*
+	v.add("sdate", {
+        required: true
+    });
+    v.add("edate", {
+        required: true
+    });
+    var result = v.validate();
+	if (!result) {
+		alert(v.getErrorMessage());
+		v.getErrorElement().focus();
+		return false;
+	}
+     */
+
+	form.submit();
+}
+
+</script>
+
+</head>
+<body>
+<!-- header s -->
+<link rel="stylesheet" type="text/css" href="/css/NotoSansKR-Hestia.css"/>
+ 
+<!--[if lt IE 9]>
+   	<script type="text/javascript" src="/js/html5shiv.js"></script>
+	<script type="text/javascript" src="/js/IE9.js"></script>
+<![endif]-->
+<script type="text/javascript">
+/*===========================================================================================
+세션 타이머 관련 함수
+===========================================================================================*/
+var fvSesSecond  = 10*60;
+var timerchecker = null;
+
+$(document).ready(function(){
+	/* 세션 타이머에 사용 된 Login 유무 체크  */
+	var strValue = '';
+
+	if( strValue != null && strValue != '' )
+	{
+		initTimer();
+	}
+});
+
+//모바일 에이전트 구분
+var isMobile = {
+        Android: function () {
+                 return navigator.userAgent.match(/Android/i) == null ? false : true;
+        },
+        BlackBerry: function () {
+                 return navigator.userAgent.match(/BlackBerry/i) == null ? false : true;
+        },
+        IOS: function () {
+                 return navigator.userAgent.match(/iPhone|iPad|iPod/i) == null ? false : true;
+        },
+        Opera: function () {
+                 return navigator.userAgent.match(/Opera Mini/i) == null ? false : true;
+        },
+        Windows: function () {
+                 return navigator.userAgent.match(/IEMobile/i) == null ? false : true;
+        },
+        any: function () {
+                 return (isMobile.Android() || isMobile.BlackBerry() || isMobile.IOS() || isMobile.Opera() || isMobile.Windows());
+        }
+};
+
+$(document).on('keyup','.numbersOnly',function(){
+
+	var inputval = $(this).val();
+	if(inputval != '0'){
+		inputval = inputval.replace(/(^0+)/, "");
+	}
+	$(this).val(inputval.replace(/[^0-9]/gi,''));
+
+});
+
+function logout(){
+	var msg = "로그아웃 하시겠습니까?";
+	var con = confirm(msg);
+
+	if(con){
+		clearTimer();
+		location.href = "/portal/member/logout.do?menuNo=200473";
+	}
+}
+
+/*===========================================================================================
+세션 타이머 관련 함수
+WorkArea Body에 essionTimer INCLUDE 해줘야 함
+===========================================================================================*/
+function addTimer()
+{
+	fvSesSecond = 10*60;
+	clearTimeout(timerchecker);
+	initTimer();
+}
+
+function clearTimer()
+{
+	fvSesSecond = 10*60;
+	clearTimeout(timerchecker);
+}
+
+function initTimer()
+{
+	var rMinute = parseInt(fvSesSecond / 60);
+	var rSecond = fvSesSecond % 60;
+
+	if(fvSesSecond > 59){
+		$("#timeoutArea").text( (rMinute < 10 ? "0"+rMinute:rMinute) +":"+ (rSecond<10 ? "0"+rSecond:rSecond));
+		$("#addTimeoutArea").text( (rSecond<10 ? "0"+rSecond:rSecond));
+
+		fvSesSecond--;
+		timerchecker = setTimeout("initTimer()",1000);
+	}
+	else
+	{
+		$('body').css({"overflow": "hidden"});
+		$('#addTimer').removeClass('hide');
+
+		$("#timeoutArea").text( (rMinute < 10 ? "0"+rMinute:rMinute) +":"+ (rSecond<10 ? "0"+rSecond:rSecond));
+		$("#addTimeoutArea").text( (rSecond<10 ? "0"+rSecond:rSecond));
+
+		fvSesSecond--;
+		timerchecker = setTimeout("initTimer()",1000);
+
+		if( fvSesSecond < 0 )
+		{
+			stopTimePop();
+		}
+	}
+}
+
+function addTimePop()
+{
+	addTimer();
+	$('body').css({"overflow": ""});
+	$('#addTimer').addClass('hide');
+}
+
+function stopTimePop()
+{
+	clearTimer();
+	$('body').css({"overflow": ""});
+	$('#addTimer').addClass('hide');
+
+	location.href = "/portal/member/logout.do?menuNo=200473";
+}
+</script>
+<header>
+<style>
+@media print {
+	@page {
+	  size: auto;
+	  margin: 0;  /* this affects the margin in the printer settings */
+	}
+	.nonPrint{opacity:0 !important;visibility:hidden !important;display:none !important;height:0;width:0;margin:0;padding:0;}
+	.wrap{padding:0px !important;}
+	.content {
+	-webkit-print-color-adjust: exact !important;
+	visibility: visible;
+	height: 100%;
+	width: 100% !important;
+/*	position: relative; */
+	top: 0;
+	left: 0;
+	margin: 0;
+	padding: 15px;
+	font-size: 14px;
+	line-height: 18px;
+	overflow: visible;
+	}
+}
+</style>
+<div class="wrap nonPrint">
+	<div class="inner">
+		<button type="button" class="btn_gnb">전체메뉴</button>
+		<h1><a href="/">중앙선거여론조사심의위원회</a></h1>
+		<!-- <p class="bold" style="color:red; font-size:25px;"> (  TEST SERVER  )</p> -->
+		<nav class="tnb">
+			<a href="/portal/member/join01.do?menuNo=200475" class="tm">회원가입</a>
+			<a href="/portal/member/forLogin.do?menuNo=200473" class="tm">로그인</a>
+			<a href="/portal/member/userInfoList.do?menuNo=200473" class="tm">마이페이지</a>
+				</nav>
+		<nav class="gnb">
+			<div class="menu">
+				<div class="mo">
+					<button type="button" class="btn_gnb_x">메뉴닫기</button>
+					<!--로그인  -->
+					<a href="/portal/member/forLogin.do?menuNo=200473" class="btn_login">로그인해주세요.</a>
+					<!---->
+				</div>
+				<ul>
+					<li>
+						<p class="mm jq-toggle">위원회소개</p>
+						<span class="sm">
+							<a href="/portal/content/view.do?menuNo=310001" class="sm">위원장 인사말</a>
+							<a href="/portal/content/view.do?menuNo=310002" class="sm">위원소개</a>
+							<a href="/portal/content/view.do?menuNo=310003" class="sm">조직 및 직무</a>
+							<a href="/portal/content/view.do?menuNo=310004" class="sm">오시는 길</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">제도안내</p>
+						<span>
+							<a href="/portal/content/view.do?menuNo=300009" class="sm">업무흐름</a>
+							<a href="/portal/content/view.do?menuNo=300002" class="sm">조사기관 등록</a>
+							<a href="/portal/content/view.do?menuNo=300003" class="sm">여론조사 사전신고</a>
+							<a href="/portal/content/view.do?menuNo=300004" class="sm">휴대전화 가상번호</a>
+							<a href="/portal/content/view.do?menuNo=300005" class="sm">여론조사 실시</a>
+							<a href="/portal/content/view.do?menuNo=300006" class="sm">조사결과 등록</a>
+							<a href="/portal/content/view.do?menuNo=300007" class="sm">조사결과 공표∙보도</a>
+							<a href="/portal/content/view.do?menuNo=300008" class="sm">여론조사 심의∙조치</a>
+							<a href="/portal/content/view.do?menuNo=300010" class="sm">관련법규</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">공지·자료</p>
+						<span>
+							<a href="/portal/bbs/B0000001/list.do?menuNo=200468" class="sm">공지사항</a>
+							<a href="/portal/bbs/B0000002/list.do?menuNo=200470" class="sm">자료실</a>
+							<a href="/portal/bbs/B0000046/list.do" class="sm">FAQ</a>
+						</span>
+					</li>
+					<li>
+						<p class="mm jq-toggle">여론조사결과 보기</p>
+						<span>
+							<a href="/portal/bbs/B0000005/list.do?menuNo=200467" class="sm">여론조사결과 보기</a>
+							<a href="/portal/bbs/B0000025/list.do?menuNo=200500" class="sm">여론조사결과 주요 데이터</a>
+						</span>
+					</li>
+					<li>
+						<a href="/portal/content/onvy/list.do" class="nw jq-toggle">여론조사기관 보기</a>
+					</li>
+					<li>
+						<p class="mm jq-toggle">심의·조치</p>
+						<span>
+							<a href="/portal/bbs/B0000007/list.do?menuNo=200469" class="sm">선거여론조사기관 조치현황</a>
+							<a href="/portal/content/qpis/list.do" class="sm">공표·보도 불가현황</a>
+							<a href="/portal/bbs/B0000045/list.do?menuNo=200480" class="sm">유형별 위반사례</a>
+							<a href="/portal/bbs/B0000004/intro.do?menuNo=200471" class="sm">불공정 여론조사 신고</a>
+						</span>
+					</li>
+					<script>
+								function loginAlert(){ 
+									alert("로그인이 필요한 페이지입니다. 로그인페이지로 이동하시겠습니까?"); 								
+									location.href = "/portal/member/forLogin.do"; 
+								}
+							</script>
+							<li class="pc">
+								<a href="javascript:loginAlert();" class="mm">조사기관,정당,위탁단체</a>
+							</li>
+						</ul>
+			</div>
+		</nav>
+	</div><!--inner-->
+</div><!--wrap-->
+</header>
+<!-- header e -->
+<!-- body -->
+<section class="sub">
+<div class="wrap">
+	<div class="inner">
+		<nav class="lnb nonPrint">
+	<h2><i></i>여론조사기관보기</h2>
+	<ul>
+		<li><a href="/portal/content/onvy/list.do">여론조사기관보기</a></li>
+	</ul>
+</nav>
+<h3>여론조사기관 등록현황</h3>
+		<div class="content">
+			<div class="path">
+				<p>HOME</p>
+				<p>여론조사기관 보기</p>
+				<p class="last">여론조사기관 등록현황</p>
+				<button type="button" class="btn h_xs line02 ico print"><i>인쇄</i></button>
+			</div>
+			<form class="frm" id="frm" name="frm" action="/portal/content/onvy/list.do"  method="post">
+			<div class="tap inttreg">
+				<span class="tapt on"><a href="/portal/content/onvy/list.do">기관등록 현황</a></span>
+				<span class="tapt"><a href="/portal/content/onvy/cancel.do">기관등록 취소현황</a></span>
+				<span class="tapt"><a href="/portal/content/onvy/inttReg.do">연도별 기관등록 현황</a></span>
+			</div>
+			<div class="box bg srh">
+				<div class="bind pc">
+					<p class="txt tit">등록일자</p>
+					<div class="day w_md fl"><input type="text" class="input" id="sdate" name="sdate" value="" title="시작일"><button type="button" id="sdateBtn"class="btn">날짜선택</button></div>
+					<i class="txt fl">~</i>
+					<div class="day w_md fl"><input type="text" class="input" id="edate" name="edate" value="" title="마지막일"><button type="button" id="edateBtn" class="btn">날짜선택</button></div>
+				</div>
+				<div class="bind">
+					<p class="txt tit">검색하기</p>
+					<div class="select w_sm fl">
+						<label id="searchCndLabel">:: 검색어구분 ::</label>
+						<select id="searchCnd" name="searchCnd">
+							<option value="">:: 검색어구분 ::</option>
+							<option value="1" >조사기관명</option>
+							<option value="2" >사무소 소재지</option>
+							<option value="3" >대표자</option>
+						</select>
+					</div>
+					<div class="find srh w_lg fl">
+						<input type="text" class="input" id="searchWrd" name="searchWrd" onkeypress="if(event.keyCode==13) {btnClick(); return false;}"   value="" placeholder="검색어를 입력하세요.">
+						<button type="button" class="btn h_md color01"  onclick="btnClick()"><i>검색</i></button>
+					</div>
+					<button type="button" class="btn w_xs h_md line01 pc"  onclick="javascript:searchReset()">초기화</button>
+				</div>
+			</div>
+			<p class="total">Total <i>61건</i></p>
+			<div class="board">
+				<div class="grid nodata">
+					<p class="row th">
+						<span class="col">번호</span>
+						<span class="col">조사기관명</span>
+						<span class="col">사무소 소재지</span>
+						<span class="col">전화번호</span>
+						<span class="col">대표자</span>
+						<span class="col">등록일자</span>
+						<!-- <span class="col">비고</span> -->
+					</p>
+					<a href="/portal/content/onvy/detail.do?insttNum=154&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>61</span>
+							<span class="col"><i class="tit"></i>(주)유와이텔</span>
+							<span class="col tl"><i class="tit"></i>경기도 안양시 동안구 벌말로 123 (관양동)A동 611호(평촌스마트베이)</span>
+							<span class="col ws" ><i class="tit"></i>1877-2020</span>
+							<span class="col"><i class="tit"></i>최윤창</span>
+							<span class="col ws"><i class="tit"></i>2026-04-21</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=153&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>60</span>
+							<span class="col"><i class="tit"></i>제이투인사이트랩</span>
+							<span class="col tl"><i class="tit"></i>부산광역시 부산진구 연수로 18-1 (양정동)2층 202호</span>
+							<span class="col ws" ><i class="tit"></i>051-342-0222</span>
+							<span class="col"><i class="tit"></i>조하연</span>
+							<span class="col ws"><i class="tit"></i>2026-04-07</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=152&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>59</span>
+							<span class="col"><i class="tit"></i>바로미터여론연구소</span>
+							<span class="col tl"><i class="tit"></i>서울특별시 용산구 한강대로104마길 64 (동자동)2층</span>
+							<span class="col ws" ><i class="tit"></i>02-6402-8585</span>
+							<span class="col"><i class="tit"></i>하주형</span>
+							<span class="col ws"><i class="tit"></i>2026-02-24</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=151&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>58</span>
+							<span class="col"><i class="tit"></i>(주)제로투원파트너스</span>
+							<span class="col tl"><i class="tit"></i>서울특별시 마포구 마포대로 86 (도화동)6층 611호(도화동, 창강빌딩)</span>
+							<span class="col ws" ><i class="tit"></i>02-707-0210</span>
+							<span class="col"><i class="tit"></i>권성은</span>
+							<span class="col ws"><i class="tit"></i>2026-01-28</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=149&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>57</span>
+							<span class="col"><i class="tit"></i>리서치제이 (주)</span>
+							<span class="col tl"><i class="tit"></i>경기도 과천시 과천대로7길 65 (갈현동)B동412호</span>
+							<span class="col ws" ><i class="tit"></i>02-6941-0765</span>
+							<span class="col"><i class="tit"></i>이배인</span>
+							<span class="col ws"><i class="tit"></i>2025-12-18</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=148&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>56</span>
+							<span class="col"><i class="tit"></i>리서치웰</span>
+							<span class="col tl"><i class="tit"></i>대구광역시 달서구 월배로 347 (송현동)3층 301호</span>
+							<span class="col ws" ><i class="tit"></i>053-657-6288</span>
+							<span class="col"><i class="tit"></i>김욱</span>
+							<span class="col ws"><i class="tit"></i>2025-11-18</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=147&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>55</span>
+							<span class="col"><i class="tit"></i>주식회사 한민리서치</span>
+							<span class="col tl"><i class="tit"></i>충청남도 천안시 동남구 청수로 115 (구성동)201호(파크청숲)</span>
+							<span class="col ws" ><i class="tit"></i>041-569-1983</span>
+							<span class="col"><i class="tit"></i>권주한</span>
+							<span class="col ws"><i class="tit"></i>2025-10-28</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=144&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>54</span>
+							<span class="col"><i class="tit"></i>트랜드리서치(주)</span>
+							<span class="col tl"><i class="tit"></i>서울특별시 서초구 반포대로24길 82 (서초동)3층</span>
+							<span class="col ws" ><i class="tit"></i>02-3442-0675</span>
+							<span class="col"><i class="tit"></i>김용수</span>
+							<span class="col ws"><i class="tit"></i>2025-08-08</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=143&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>53</span>
+							<span class="col"><i class="tit"></i>KPO리서치(케이피오 주식회사)</span>
+							<span class="col tl"><i class="tit"></i>대구광역시 수성구 수성로24길 82 (상동)2층</span>
+							<span class="col ws" ><i class="tit"></i>070-7931-0115</span>
+							<span class="col"><i class="tit"></i>유승민</span>
+							<span class="col ws"><i class="tit"></i>2025-03-11</span>
+							</a>
+					<a href="/portal/content/onvy/detail.do?insttNum=140&step=1" class="row tr"><!-- sub0301_1_view.html -->
+							<span class="col"><i class="tit"></i>52</span>
+							<span class="col"><i class="tit"></i>한국정책연구원</span>
+							<span class="col tl"><i class="tit"></i>광주광역시 동구 문화전당로 19-1 (남동)6층 601호</span>
+							<span class="col ws" ><i class="tit"></i>062-233-4301</span>
+							<span class="col"><i class="tit"></i>탁영환</span>
+							<span class="col ws"><i class="tit"></i>2025-01-08</span>
+							</a>
+					</div>
+			</div>
+			<!--데이터없는 경우-->
+			<!--//데이터없는 경우-->
+
+			<div class="pager">
+					<span><button type="button" class="page cont first" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=1'">처음</button><button type="button" class="page num on">1</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=2'">2</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=3'">3</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=4'">4</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=5'">5</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=6'">6</button><button type="button" class="page num" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=7'">7</button><button type="button" class="page cont last" onclick="location.href='/portal/content/onvy/list.do?&sdate=&edate=&searchVO=egovframework.rte.nesdc.bbs.vo.SearchVO@67aa6ad3[sdate=,edate=,xdate=,searchTime=,searchCnd=,searchWrd=,pageIndex=1,pageUnit=10,pageSize=10,firstIndex=0,lastIndex=10,recordCountPerPage=10,rowNo=0,bbsNm=,delCode=0,orgTableNm=,tableNm=,orgPath=,newPath=,atchFileId=,orgFileNm=,fileSn=,fileNm=,totalRows=0,totalCnt=0,siteName=,currentSize=0,totCnt=0,userIp=,siteId=,programId=,targetMethod=,pageQueryString=<null>,menuNo=<null>,imgUrl=,publish=,useAt=Y,saveType=,userId=,telecomCd=,pollGubuncd=,usePurpose=]&searchWrd=&searchCnd=&pageIndex=7'">맨끝</button></span></div>
+			</form>
+		</div>
+
+		<div class="quick">
+	<ul>
+		<li><a href="/portal/bbs/B0000005/list.do?menuNo=200467" class="ico1">여론조사결과<br>보기</a></li>
+					<li><a href="/portal/content/onvy/list.do" class="ico2">선거여론조사<br>기관보기</a></li>
+			<li class="top"><button type="button" class="btn_top"><i>TOP</i></button></li>
+	</ul>
+</div></div>
+</div>
+</section>
+<!-- 안내문 팝업 시작 -->
+<article id="addTimer" class="timer sure hide">
+	<div class="wrap">
+		<div class="inner">
+			<div class="title">
+				<h3><i>자동로그아웃안내</i></h3>
+		    </div>
+			<div>
+			    	<p style="text-align: center; font-size: 20px; padding: 14px 0px;">자동 로그아웃 남은 시간</p>
+					<p style="font-size: 15px; padding: 6px 0px;">회원님의 안전한 정보보호를 위해 로그인 후 약 10분 동안 이용이 없어 자동로그아웃 됩니다.</p>
+					<p style="font-size: 15px; padding: 6px 0px;">로그인 시간을 연장하시려면 로그인 연장하기 버튼을 클릭하여 주십시오</p>
+					<span id="addTimeoutArea" style="text-align:center; display: inline-block; height: 25px; line-height: 25px; color: #666; font-size: 60px; padding: 30px 0px;">00</span>
+				<div class="btns">
+					<button type="button" href="javascript:;" onclick="addTimePop()" class="btn h_lg color01" >로그인 연장하기</button>
+					<button type="button" href="javascript:;" onclick="stopTimePop()" class="btn h_lg color01" >지금 로그아웃</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</article>
+<!-- 안내문 팝업 종료 -->
+</nav><!-- body -->
+<footer>
+	<div class="wrap nonPrint">
+
+		<article class="link" >
+			<div class="inner" >
+				<div id="relationSite" class="site" >
+					<p>관련사이트</p>
+					<span>
+					<a href="http://ikora.or.kr" target="_blank">한국조사협회</a>
+					<a href="http://kopra.kr" target="_blank">한국정치조사협회</a>
+					<a href="http://kasr.org" target="_blank">한국조사연구학회</a>
+					<a href="http://www.kba.or.kr" target="_blank">한국방송협회</a>
+					<a href="http://presskorea.or.kr" target="_blank">한국신문협회</a>
+					<a href="http://kina.or.kr" target="_blank">한국인터넷신문협회</a>
+					<a href="http://www.kcta.or.kr" target="_blank">한국케이블TV방송협회</a>
+				</span>
+				</div>
+				<div id="sidoElection" class="site">
+					<p>시・도선거관리위원회</p>
+					<span onm>
+					<a href="" target="_blank">시・도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/su/main/main.do" target="_blank">서울특별시선거관리위원회</a>
+					<a href="https://su.nec.go.kr/bs/main/main.do" target="_blank">부산선거관리위원회</a>
+					<a href="https://su.nec.go.kr/dg/main/main.do" target="_blank">대구선거관리위원회</a>
+					<a href="https://su.nec.go.kr/ic/main/main.do" target="_blank">인천선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gj/main/main.do" target="_blank">광주선거관리위원회</a>
+					<a href="https://su.nec.go.kr/dj/main/main.do" target="_blank">대전선거관리위원회</a>
+					<a href="https://su.nec.go.kr/us/main/main.do" target="_blank">울산선거관리위원회</a>
+					<a href="https://su.nec.go.kr/sj/main/main.do" target="_blank">세종특별자치시선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gg/main/main.do" target="_blank">경기도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gw/main/main.do" target="_blank">강원도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/cb/main/main.do" target="_blank">충청북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/cn/main/main.do" target="_blank">충청남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jb/main/main.do" target="_blank">전라북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jn/main/main.do" target="_blank">전라남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gb/main/main.do" target="_blank">경상북도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/gn/main/main.do" target="_blank">경상남도선거관리위원회</a>
+					<a href="https://su.nec.go.kr/jj/main/main.do" target="_blank">제주도선거관리위원회</a>
+				</span>
+				</div>
+				<nav class="fnb">
+					<a href="/portal/content/view.do?menuNo=200480">개인정보처리방침</a>
+					<a href="/portal/content/view.do?menuNo=200482">저작권정책</a>
+					<a href="/portal/content/view.do?menuNo=200486">사이트맵</a>
+					<a href="/portal/content/view.do?menuNo=200481">이용안내</a>
+				</nav>
+			</div>
+		</article>
+		<article class="copyright">
+			<div class="inner">
+				<!--
+                <ul>
+                    <li class="tel">대표전화 : <a href="tel:025040342">02) 504 - 0342 ~ 3</a></li>
+                    <li>선거법질의, 신고제보 : <a href="tel:1390">국번없이 1390</a></li>
+                    <li class="mail">e - mail : <a href="mailto:nesdc@nec.go.kr">nesdc@nec.go.kr</a></li>
+                    <li>Fax : 0505 - 058 - 1175 </li>
+                    <li class="adrs">[08806] 서울시 관악구 남부순환로 272길 23(구 남현동 1064-7번지) 중앙선거관리위원회 관악청사 2층 204호, <i>중앙선거여론조사심의위원회</i></li>
+                </ul>
+                -->
+				<ul>
+					<li class="tel">중앙여심위 : <a href="tel:025040342">02) 504 - 0342 ~ 3</a></li>
+					<li>휴대전화 가상번호 문의 : (중앙여심위) <a href="tel:0232993853">02) 3299 - 3853</a>, (정당과) <a href="tel:0232948353">02) 3294 - 8353</a>, (위탁선거과) <a href="tel:0232948339">02) 3294 - 8339</a></li>
+				</ul>
+				<ul class="inner_sub" style="padding-top:0px;">
+					<li class="tel">선거법질의, 신고제보 : <a href="tel:1390">국번없이 1390</a></li>
+					<li class="mail">e - mail : <a href="mailto:nesdc@nec.go.kr">nesdc@nec.go.kr</a></li>
+					<li>Fax : 0505 - 058 - 1175 </li>
+					<li class="adrs">[08806] 서울시 관악구 남부순환로 272길 23(구 남현동 1064-7번지) 중앙선거관리위원회 관악청사 2층 204호, <i>중앙선거여론조사심의위원회</i></li>
+				</ul>
+				<p class="warning">본 홈페이지에 게시된 이메일 주소 자동수집을 거부하여, 이를 위반 시, 정보통신망법에 의하여 처벌됨을 유념하시기 바랍니다.</p>
+				<p class="copy p">Copyright© 2018 National Election Survey Deliberation Commission.</p>
+				<p class="copy m">Copyright© nesdc co,ltd.</p>
+				<button type="button" class="btn_top">TOP</button>
+			</div>
+		</article>
+	</div>
+
+</footer>
+<style>
+	.copyright ul.inner_sub li:nth-of-type(1):before{content:none !important;width:0px !important;left:0px !important;display:none !important;margin-left:0px !important;padding-left:0px !important;}
+
+</style>
+<script>
+	$(document).ready(function() {
+
+		/* TABLE SCROLL */
+		$(function(){
+			$(window).resize(function () {
+				if ($(this).width() < 960) {
+					$(".scroll").css({"width": ($(this).width()-20) +"px"});
+				} else {
+					$(".scroll").css({"width": 100 +"%"});
+				}
+			}).resize();
+		});
+		/* TOP FIX */
+		$(function(){
+			$(window).scroll(function () {
+				if ($(this).scrollTop() > 100) {
+					$('header').addClass('fix');
+					$('.quick').addClass('fix');
+				} else {
+					$('header').removeClass('fix');
+					$('.quick').removeClass('fix');
+				}
+			});
+		});
+		/* GNB */
+		$('.btn_gnb').click(function(){
+			$('.gnb').animate({left: '0'});
+		});
+		$('.btn_gnb_x').click(function(){
+			$('.gnb').animate({left: '-300px'});
+		});
+		/* DEPTH */
+		if(depth>0){
+			$(".lnb > ul > li:eq("+(depth-1)+")").addClass('on');
+		};
+		/* SLIDE */
+		$('.slide').bxSlider({
+			mode: 'horizontal',
+			speed: 1500,
+			pager: true,
+			autoControls: true,
+			auto: true,
+			autoHover: true,
+		});
+		$('.slide_logo').bxSlider({
+			mode: 'horizontal',
+			speed: 3000,
+			minSlides : 2,
+			maxSlides : 5,
+			slideWidth : 160,
+			slideMargin : 10,
+			pager: false,
+			auto: true,
+			autoHover: true,
+		});
+		/* GRID */
+		var colCount = $($(".grid .row.th")[0]).find(".col").length;
+		var trCount = $(".grid .row.tr").length;
+
+		for(var j = 0 ; j <trCount ; j++){
+			for(var i = 0; i < colCount; i++){
+				var gridText = $(".grid .row.th .col").eq(i).text();
+				$($($(".grid .row.tr")[j]).find(".col")[i]).find("i").text(gridText);
+			}
+		};
+		/* SITE */
+		$('.site').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$(this).addClass('on');
+			}
+		});
+		$('.site').mouseleave(function(){
+			$(this).removeClass('on');
+		});
+		/* SCROLL */
+		$('.scroll').hover(function(){
+			$(this).addClass('on');
+		});
+		$('.scroll').scroll(function(){
+			$(this).addClass('on');
+		});
+		/* TOGGLE */
+		$('.jq-toggle').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$(this).addClass('on');
+			}
+		});
+		/* TAP */
+		$('.tapt').click(function(){
+			$(this).siblings('.tapt').removeClass('on');
+			$(this).addClass('on');
+			$(this).parent('.tap').siblings('.tapview').children('.tapc').removeClass('on');
+			$(this).parent('.tap').siblings('.tapview').children('.tapc').eq($(this).index()).addClass('on');
+			var cateText = $(this).text();
+			$(this).parents().siblings('label').text(cateText);
+			$(this).parents().siblings('label').removeClass('on');
+		});
+		/* STEP */
+		$('.step.jq > .tep').click(function(){
+			$('.tep').removeClass('ok');
+			$(this).siblings('.tep').removeClass('on');
+			$(this).prev('.tep').addClass('ok');
+			$(this).addClass('on');
+		});
+		/* SELECT */
+		$('.select').click(function(){
+			if ($(this).hasClass('on')) {
+				$(this).removeClass('on');
+			} else {
+				$('.select').removeClass('on');
+				$(this).addClass('on');
+			}
+		});
+		$('select').change(function(){
+			var selectText = $(this).children('option:selected').text();
+			$(this).siblings('label').text(selectText);
+		});
+		/* POPUP */
+		$('.jq_popup').click(function(){
+			$('body').css({"overflow": "hidden"});
+			$('.popup').removeClass('hide');
+		});
+		$('.popup .btn_x').click(function(){
+			$('body').css({"overflow": ""});
+			$('.popup').addClass('hide');
+		});
+		$('.popup .jq_x').click(function(){
+			$('body').css({"overflow": ""});
+			$('.popup').addClass('hide');
+		});
+		/* LAYER */
+		$('.jq_layer').click(function(){
+			$('.layer').hide();
+			$(this).next('.layer').show();
+		});
+		$('.layer .btn_x').click(function(){
+			$('.layer').hide();
+		});
+		/* BTN_TOP */
+		$('.btn_top').click(function () {
+			$('body,html').animate({
+				scrollTop: 0
+			}, 500);
+			return false;
+		});
+	})
+</script>
+</body>
+</html></body>
+</html>
