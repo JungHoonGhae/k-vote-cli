@@ -150,6 +150,35 @@ func classifyVoteType(town, booth string) string {
 	}
 }
 
+// ToElectionResult maps a CSV-derived ResultRecord into the common schema. CSV
+// rows are all leaves (no 합계/소계), so Aggregate is always false.
+func (r ResultRecord) ToElectionResult() ElectionResult {
+	// Normalize CSV vote-type vocabulary to match XLSX vocabulary so the
+	// common schema (ElectionResult.VoteType) is truly unified across sources.
+	// CSV classifyVoteType emits "거소선상" for 거소·선상투표 rows; XLSX
+	// deriveVoteType emits "거소" for 거소투표 rows. We normalize to "거소".
+	vt := r.VoteType
+	if vt == "거소선상" {
+		vt = "거소"
+	}
+	return ElectionResult{
+		Race: "",
+		Dimensions: []Dimension{
+			{"시도명", r.Sido},
+			{"선거구명", r.District},
+			{"법정읍면동명", r.Town},
+			{"투표구명", r.Booth},
+		},
+		VoteType:   vt,
+		Aggregate:  false,
+		Electorate: r.Electorate,
+		Votes:      r.Votes,
+		Invalid:    r.Invalid,
+		Abstention: r.Abstention,
+		Candidates: r.Candidates,
+	}
+}
+
 // decodeKorean returns text decoded as UTF-8 when valid, otherwise from EUC-KR
 // (a superset of which, CP949, is what NEC 개표결과 CSVs use).
 func decodeKorean(raw []byte) string {

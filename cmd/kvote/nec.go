@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/JungHoonGhae/kvote/internal/nec"
 	"github.com/JungHoonGhae/kvote/internal/output"
@@ -87,6 +88,8 @@ func necPullCmd() *cobra.Command {
 func necResultsCmd() *cobra.Command {
 	var file, aggregate string
 	var byVoteType bool
+	var race string
+	var leafOnly bool
 	c := &cobra.Command{
 		Use:   "results <publicDataPk>",
 		Short: "개표결과 CSV를 투표구별 정규화 레코드로 출력",
@@ -125,6 +128,24 @@ func necResultsCmd() *cobra.Command {
 				return fmt.Errorf("publicDataPk 또는 --file 중 하나가 필요합니다")
 			}
 
+			if isXLSX(raw) {
+				if aggregate != "none" {
+					fmt.Fprintln(cmd.ErrOrStderr(), "주의: --aggregate 는 XLSX 에 미지원입니다 (P2 비범위). --leaf-only 로 leaf 행만 거를 수 있습니다.")
+				}
+				ers, err := nec.ParseResultsXLSX(raw)
+				if err != nil {
+					return err
+				}
+				if race != "" {
+					ers = filterRace(ers, race)
+				}
+				if leafOnly {
+					ers = filterLeaf(ers)
+				}
+				fmt.Fprintf(cmd.ErrOrStderr(), "정규화 완료: %d개 행 (XLSX)\n", len(ers))
+				return renderElection(cmd, format, ers)
+			}
+
 			recs, err := nec.ParseResults(raw)
 			if err != nil {
 				return err
@@ -146,7 +167,63 @@ func necResultsCmd() *cobra.Command {
 	c.Flags().StringVar(&file, "file", "", "이미 받은 개표결과 CSV 경로 (다운로드 생략)")
 	c.Flags().StringVar(&aggregate, "aggregate", "none", "집계 단위: none|town|sgg|sido|national")
 	c.Flags().BoolVar(&byVoteType, "by-votetype", false, "투표유형(본/관내사전/관외사전/거소선상)으로 분리 (집계와 함께)")
+	c.Flags().StringVar(&race, "race", "", "XLSX 선거종류(시트명) 부분일치 필터")
+	c.Flags().BoolVar(&leafOnly, "leaf-only", false, "XLSX 집계행(합계/소계) 제외, leaf만")
 	return c
+}
+
+// isXLSX reports whether raw is an XLSX (zip) file by its magic bytes.
+func isXLSX(raw []byte) bool {
+	return len(raw) >= 2 && raw[0] == 'P' && raw[1] == 'K'
+}
+
+func filterRace(ers []nec.ElectionResult, race string) []nec.ElectionResult {
+	out := ers[:0:0]
+	for _, e := range ers {
+		if strings.Contains(e.Race, race) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func filterLeaf(ers []nec.ElectionResult) []nec.ElectionResult {
+	out := ers[:0:0]
+	for _, e := range ers {
+		if !e.Aggregate {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+func renderElection(cmd *cobra.Command, format output.Format, ers []nec.ElectionResult) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), ers)
+	case output.JSONL:
+		items := make([]any, len(ers))
+		for i := range ers {
+			items[i] = ers[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"race", "차원", "투표유형", "집계", "선거인수", "투표수", "무효", "후보수"}
+		rows := make([][]string, 0, len(ers))
+		for _, e := range ers {
+			dims := make([]string, 0, len(e.Dimensions))
+			for _, d := range e.Dimensions {
+				if d.Value != "" {
+					dims = append(dims, d.Value)
+				}
+			}
+			rows = append(rows, []string{
+				e.Race, strings.Join(dims, ">"), e.VoteType, fmt.Sprint(e.Aggregate),
+				fmt.Sprint(e.Electorate), fmt.Sprint(e.Votes), fmt.Sprint(e.Invalid), fmt.Sprint(len(e.Candidates)),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
 }
 
 func parseAggLevel(s string) (nec.AggLevel, bool) {
