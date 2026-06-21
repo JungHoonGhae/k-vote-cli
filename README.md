@@ -92,13 +92,30 @@
 
 ## 설치
 
+**`go install` (권장 — 가장 간단)**
+
+```bash
+go install github.com/JungHoonGhae/kvote-cli/cmd/kvote@latest
+# 비공개 저장소 동안엔 git 인증 + GOPRIVATE 필요:
+#   GOPRIVATE=github.com/JungHoonGhae/* go install github.com/JungHoonGhae/kvote-cli/cmd/kvote@latest
+```
+
+**Homebrew (macOS/Linux)** — 저장소 공개 + tap 준비 후:
+
+```bash
+brew install JungHoonGhae/kvote-cli/kvote
+```
+
+**소스 빌드**
+
 ```bash
 git clone https://github.com/JungHoonGhae/kvote-cli
 cd kvote-cli
-make build        # -> bin/kvote
-# 또는
-make install      # $GOBIN 에 설치
+make build        # -> bin/kvote   (또는 make install 로 $GOBIN 에)
 ```
+
+> 크로스플랫폼 바이너리(macOS/Linux/Windows · arm64/amd64)는 태그(`vX.Y.Z`) 푸시 시
+> [GitHub Releases](https://github.com/JungHoonGhae/kvote-cli/releases) 에 goreleaser 로 자동 게시됩니다.
 
 ## Quick Start
 
