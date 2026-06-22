@@ -27,7 +27,49 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd())
+	return c
+}
+
+func necLatestCmd() *cobra.Command {
+	c := &cobra.Command{
+		Use:   "latest <선거종류 키워드>",
+		Short: "선거종류의 최신 회차 데이터셋을 두 소스에서 자동 해석",
+		Long: `키워드(예: "지방선거 개표결과", "대통령선거 개표결과")로 data.go.kr 과
+개방포털 양쪽에서 제목의 회차(제N회/제N대)를 파싱해 가장 최신 회차를 찾습니다.
+새 선거 결과가 올라오는 순간 자동으로 잡히므로, 회차를 외울 필요가 없습니다.
+
+나온 key 를 그대로 ` + "`nec results <key> --source <소스>`" + ` 에 넘기면 정규화됩니다.`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			keyword := strings.Join(args, " ")
+			refs := newNECClient().LatestDataset(context.Background(), keyword)
+			if len(refs) == 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "%q 에 해당하는 회차 데이터셋을 찾지 못했습니다.\n", keyword)
+				return nil
+			}
+			switch format {
+			case output.JSON:
+				return output.WriteJSON(cmd.OutOrStdout(), refs)
+			case output.JSONL:
+				items := make([]any, len(refs))
+				for i := range refs {
+					items[i] = refs[i]
+				}
+				return output.WriteJSONL(cmd.OutOrStdout(), items)
+			default:
+				rows := make([][]string, 0, len(refs))
+				for _, r := range refs {
+					rows = append(rows, []string{r.Source, r.Key, fmt.Sprintf("제%d", r.Era), r.Title})
+				}
+				return output.WriteTable(cmd.OutOrStdout(), []string{"source", "key", "회차", "title"}, rows)
+			}
+		},
+	}
 	return c
 }
 
