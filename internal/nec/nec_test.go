@@ -896,3 +896,19 @@ func TestParseResultsXLSXLeafSum(t *testing.T) {
 		t.Errorf("leaf sum B = %d, want %d (= 합계 row)", leafSumB, haptaeB)
 	}
 }
+
+func TestLatestOf(t *testing.T) {
+	items := [][2]string{
+		{"15041", "중앙선거관리위원회_제5회 전국동시지방선거 개표결과"},
+		{"18", "중앙선거관리위원회_제8회 전국동시지방선거 개표결과"},
+		{"21", "중앙선거관리위원회_제8회 전국동시지방선거 유권자 의식조사"}, // 같은 회차 형제 — 제외돼야
+		{"99", "중앙선거관리위원회_제17대 대통령선거 개표결과"},       // 다른 타입 — 누출되면 안 됨
+	}
+	r, ok := latestOf("datagokr", items, []string{"지방선거", "개표결과"})
+	if !ok {
+		t.Fatal("expected a match")
+	}
+	if r.Key != "18" || r.Era != 8 {
+		t.Errorf("got key=%s era=%d, want 18/8 (제8회 개표결과; 대선 누출·의식조사 오선택 방지)", r.Key, r.Era)
+	}
+}
