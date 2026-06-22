@@ -27,7 +27,68 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd())
+	return c
+}
+
+// resolveAPIKey returns the data.go.kr serviceKey from the --api-key flag or,
+// if empty, the KVOTE_DATAGOKR_KEY environment variable. The key is secret, so
+// the env var is the preferred path (it never lands in shell history or argv).
+func resolveAPIKey(flagVal string) (string, error) {
+	if flagVal != "" {
+		return flagVal, nil
+	}
+	if k := os.Getenv("KVOTE_DATAGOKR_KEY"); k != "" {
+		return k, nil
+	}
+	return "", fmt.Errorf("data.go.kr 인증키가 필요합니다: 환경변수 KVOTE_DATAGOKR_KEY 설정 또는 --api-key 전달\n" +
+		"  키 발급(자동승인): https://www.data.go.kr/data/15000900/openapi.do 활용신청")
+}
+
+// necTurnoutCmd queries the data.go.kr OpenAPI for region-level turnout. Unlike
+// the file-dataset commands this needs a serviceKey (auto-approved 활용신청), but
+// returns structured 투표율 directly — the most robust, official path.
+func necTurnoutCmd() *cobra.Command {
+	var sgType, apiKey string
+	c := &cobra.Command{
+		Use:   "turnout <sgId>",
+		Short: "투표율(시도/구시군별) — data.go.kr OpenAPI (인증키 필요)",
+		Long: `선거ID(sgId, 선거일 YYYYMMDD)와 선거종류코드(--sgtype)로 투표율을
+data.go.kr OpenAPI(VoteXmntckInfoInqireService2)에서 받아옵니다. 파일 데이터와
+달리 인증키가 필요하지만(자동승인 활용신청), 시도/구시군별 투표율을 구조화된
+형태로 직접 줍니다 — 가장 견고한 공식 경로.
+
+선거종류코드(--sgtype): 1=대통령 2=국회의원 3=시도지사 4=구시군장
+                         5=시도의원 6=구시군의원 (선거별로 제공 종류가 다름)
+
+인증키: 환경변수 KVOTE_DATAGOKR_KEY 또는 --api-key. 키는 로그에 남기지 않습니다.
+
+예) kvote nec turnout 20250603 --sgtype 1     # 제21대 대선 투표율
+    kvote nec turnout 20220601 --sgtype 3     # 제8회 지방 시도지사 투표율`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			key, err := resolveAPIKey(apiKey)
+			if err != nil {
+				return err
+			}
+			recs, err := newNECClient().Turnout(context.Background(), key, args[0], sgType)
+			if err != nil {
+				return err
+			}
+			if len(recs) == 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "sgId=%s sgtype=%s 에 대한 투표율 데이터가 없습니다 "+
+					"(아직 미발행이거나 선거종류코드를 확인하세요).\n", args[0], sgType)
+				return nil
+			}
+			return renderTurnout(cmd, format, recs)
+		},
+	}
+	c.Flags().StringVar(&sgType, "sgtype", "1", "선거종류코드: 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원")
+	c.Flags().StringVar(&apiKey, "api-key", "", "data.go.kr 인증키 (기본: 환경변수 KVOTE_DATAGOKR_KEY)")
 	return c
 }
 
@@ -359,6 +420,29 @@ func renderResults(cmd *cobra.Command, format output.Format, recs []nec.ResultRe
 				r.Sido, r.District, r.Town, r.Booth, r.VoteType,
 				fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes), fmt.Sprint(r.Invalid),
 				fmt.Sprint(r.Abstention), fmt.Sprint(len(r.Candidates)),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+func renderTurnout(cmd *cobra.Command, format output.Format, recs []nec.TurnoutRecord) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"시도", "구시군", "선거인수", "투표수", "투표율(%)"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{
+				r.Sido, r.Gusigun, fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes),
+				fmt.Sprintf("%.1f", r.Turnout),
 			})
 		}
 		return output.WriteTable(cmd.OutOrStdout(), headers, rows)

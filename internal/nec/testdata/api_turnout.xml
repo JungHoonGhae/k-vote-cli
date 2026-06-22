@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><response>
+<header>
+<resultCode>INFO-00</resultCode>
+<resultMsg>NORMAL SERVICE</resultMsg>
+</header>
+<body>
+<items>
+  <item>
+    <num>1</num>
+    <sgId>20250603</sgId>
+    <sgTypecode>1</sgTypecode>
+    <sdName>합계</sdName>
+    <wiwName>합계</wiwName>
+    <totSunsu>44391871</totSunsu>
+    <psSunsu>28622921</psSunsu>
+    <psEtcSunsu>15768950</psEtcSunsu>
+    <totTusu>35236497</totTusu>
+    <psTusu>19526449</psTusu>
+    <psEtcTusu>15710048</psEtcTusu>
+    <turnout>79.4</turnout>
+    <vrOrder>1</vrOrder>
+  </item>
+  <item>
+    <num>2</num>
+    <sgId>20250603</sgId>
+    <sgTypecode>1</sgTypecode>
+    <sdName>서울특별시</sdName>
+    <wiwName>합계</wiwName>
+    <totSunsu>8293885</totSunsu>
+    <psSunsu>5360644</psSunsu>
+    <psEtcSunsu>2933241</psEtcSunsu>
+    <totTusu>6641606</totTusu>
+    <psTusu>3725250</psTusu>
+    <psEtcTusu>2916356</psEtcTusu>
+    <turnout>80.1</turnout>
+    <vrOrder>2</vrOrder>
+  </item>
+</items>
+<numOfRows>2</numOfRows>
+<pageNo>1</pageNo>
+<totalCount>271</totalCount>
+</body>
+</response>
