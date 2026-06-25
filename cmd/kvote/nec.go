@@ -27,7 +27,60 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd(), necElectionsCmd())
+	return c
+}
+
+// necElectionsCmd lists the NEC election-code registry so analysts can resolve
+// (and enumerate) every sgId/sgTypecode that turnout/winners require.
+func necElectionsCmd() *cobra.Command {
+	var sgType, apiKey, keyword string
+	c := &cobra.Command{
+		Use:   "elections",
+		Short: "선거코드 레지스트리 (유효 sgId·선거종류) — OpenAPI (인증키 필요)",
+		Long: `data.go.kr OpenAPI(CommonCodeService)에서 1987년 이후 모든 선거의
+sgId·선거명·선거종류코드·투표일을 받아옵니다. turnout/winners 가 요구하는
+sgId·--sgtype 값을 외울 필요 없이 여기서 찾거나, 전량 열거해 루프로 수집할 수 있습니다.
+
+  -q        선거명 부분일치 필터 (예: 대통령, 지방)
+  --sgtype  선거종류코드 필터 (1=대통령 2=국회의원 3=시도지사 …; 0=상위 항목)
+
+대규모 수집 예) 모든 대선 투표율을 한 번에:
+  kvote nec elections -q 대통령선거 --sgtype 1 -f jsonl \
+    | jq -r .sgId | while read id; do kvote nec turnout $id --sgtype 1 -f jsonl; done`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			key, err := resolveAPIKey(apiKey)
+			if err != nil {
+				return err
+			}
+			recs, err := newNECClient().Elections(context.Background(), key)
+			if err != nil {
+				return err
+			}
+			filtered := recs[:0]
+			for _, r := range recs {
+				if keyword != "" && !strings.Contains(r.SgName, keyword) {
+					continue
+				}
+				if sgType != "" && r.SgTypecode != sgType {
+					continue
+				}
+				filtered = append(filtered, r)
+			}
+			if len(filtered) == 0 {
+				fmt.Fprintln(cmd.ErrOrStderr(), "조건에 맞는 선거가 없습니다.")
+				return nil
+			}
+			return renderElections(cmd, format, filtered)
+		},
+	}
+	c.Flags().StringVarP(&keyword, "query", "q", "", "선거명 부분일치 필터")
+	c.Flags().StringVar(&sgType, "sgtype", "", "선거종류코드 필터 (미지정=전체)")
+	c.Flags().StringVar(&apiKey, "api-key", "", "data.go.kr 인증키 (기본: 환경변수 KVOTE_DATAGOKR_KEY)")
 	return c
 }
 
@@ -488,6 +541,26 @@ func renderTurnout(cmd *cobra.Command, format output.Format, recs []nec.TurnoutR
 				r.Sido, r.Gusigun, fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes),
 				fmt.Sprintf("%.1f", r.Turnout),
 			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+func renderElections(cmd *cobra.Command, format output.Format, recs []nec.ElectionCode) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"sgId", "투표일", "sgtype", "선거명"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{r.SgID, r.VoteDate, r.SgTypecode, r.SgName})
 		}
 		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
 	}

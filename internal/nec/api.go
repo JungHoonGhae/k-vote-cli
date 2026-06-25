@@ -70,7 +70,8 @@ type voteItem struct {
 // election/type yet (resultCode INFO-03) — common for an election whose
 // numbers the NEC has not finished publishing.
 func (c *Client) Turnout(ctx context.Context, serviceKey, sgID, sgType string) ([]TurnoutRecord, error) {
-	items, err := fetchPages[voteItem](c, ctx, voteSttusPath, serviceKey, sgID, sgType)
+	items, err := fetchPages[voteItem](c, ctx, voteSttusPath, serviceKey,
+		url.Values{"sgId": {sgID}, "sgTypecode": {sgType}})
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,8 @@ type winnerItem struct {
 // Winners fetches every 당선인 for one election (sgId) and type (sgTypecode).
 // Like Turnout, an empty result with no error means the API has no data yet.
 func (c *Client) Winners(ctx context.Context, serviceKey, sgID, sgType string) ([]WinnerRecord, error) {
-	items, err := fetchPages[winnerItem](c, ctx, winnerPath, serviceKey, sgID, sgType)
+	items, err := fetchPages[winnerItem](c, ctx, winnerPath, serviceKey,
+		url.Values{"sgId": {sgID}, "sgTypecode": {sgType}})
 	if err != nil {
 		return nil, err
 	}
@@ -159,6 +161,43 @@ func (c *Client) Winners(ctx context.Context, serviceKey, sgID, sgType string) (
 			Gender: it.Gender, Birthday: it.Birthday, Age: it.Age, Addr: it.Addr,
 			Job: it.Job, Edu: it.Edu, Career1: it.Career1, Career2: it.Career2,
 			Votes: it.Dugsu, VoteRate: it.Dugyul,
+		})
+	}
+	return out, nil
+}
+
+// codePath is the 선거코드 목록 operation under CommonCodeService.
+const codePath = "/CommonCodeService/getCommonSgCodeList"
+
+// ElectionCode is one election in the NEC registry — the (sgId, sgTypecode)
+// pair the OpenAPI commands need. sgTypecode 0 is the umbrella entry ("제N대
+// …선거"); 1~7 are the specific contests (turnout/winners take these).
+type ElectionCode struct {
+	SgID       string `json:"sgId"`
+	SgName     string `json:"sgName"`
+	SgTypecode string `json:"sgTypecode"`
+	VoteDate   string `json:"voteDate"`
+}
+
+type codeItem struct {
+	SgID       string `xml:"sgId"`
+	SgName     string `xml:"sgName"`
+	SgTypecode string `xml:"sgTypecode"`
+	SgVotedate string `xml:"sgVotedate"`
+}
+
+// Elections lists the NEC election-code registry (every sgId/sgTypecode since
+// 1987), so callers can resolve the codes that turnout/winners require without
+// memorising them.
+func (c *Client) Elections(ctx context.Context, serviceKey string) ([]ElectionCode, error) {
+	items, err := fetchPages[codeItem](c, ctx, codePath, serviceKey, nil)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ElectionCode, 0, len(items))
+	for _, it := range items {
+		out = append(out, ElectionCode{
+			SgID: it.SgID, SgName: it.SgName, SgTypecode: it.SgTypecode, VoteDate: it.SgVotedate,
 		})
 	}
 	return out, nil
@@ -181,16 +220,20 @@ type apiEnvelope[T any] struct {
 	} `xml:"body"`
 }
 
-// fetchPages fetches all <item> rows of type T for one election across pages,
-// past the 100-row server cap. INFO-03 (no data) yields an empty slice, not an
-// error.
-func fetchPages[T any](c *Client, ctx context.Context, path, serviceKey, sgID, sgType string) ([]T, error) {
+// fetchPages fetches all <item> rows of type T across pages, past the 100-row
+// server cap. params carries operation-specific query values (e.g. sgId,
+// sgTypecode); serviceKey/numOfRows/pageNo are added here. INFO-03 (no data)
+// yields an empty slice, not an error.
+func fetchPages[T any](c *Client, ctx context.Context, path, serviceKey string, params url.Values) ([]T, error) {
 	var out []T
 	for page := 1; ; page++ {
 		q := url.Values{}
+		for k, vs := range params {
+			for _, v := range vs {
+				q.Add(k, v)
+			}
+		}
 		q.Set("serviceKey", serviceKey)
-		q.Set("sgId", sgID)
-		q.Set("sgTypecode", sgType)
 		q.Set("numOfRows", strconv.Itoa(apiMaxRows))
 		q.Set("pageNo", strconv.Itoa(page))
 
@@ -203,7 +246,7 @@ func fetchPages[T any](c *Client, ctx context.Context, path, serviceKey, sgID, s
 		case "INFO-03": // 데이터 없음 — not an error
 			return out, nil
 		default:
-			return nil, fmt.Errorf("openapi %s: %s (%s)", sgID, env.Header.ResultMsg, env.Header.ResultCode)
+			return nil, fmt.Errorf("openapi %s: %s (%s)", path, env.Header.ResultMsg, env.Header.ResultCode)
 		}
 		out = append(out, env.Body.Items.Item...)
 		if len(out) >= env.Body.TotalCount || len(env.Body.Items.Item) == 0 {

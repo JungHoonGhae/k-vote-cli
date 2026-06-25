@@ -110,6 +110,34 @@ func TestWinners(t *testing.T) {
 	}
 }
 
+func TestElections(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/api_elections.xml")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		if r.URL.Query().Get("pageNo") == "1" {
+			w.Write(fixture)
+			return
+		}
+		w.Write([]byte(emptyEnvelope))
+	}))
+	defer srv.Close()
+	c := New(WithAPIBaseURL(srv.URL), WithDelay(0), WithHTTPClient(&http.Client{Timeout: 5 * time.Second}))
+
+	recs, err := c.Elections(context.Background(), "k")
+	if err != nil {
+		t.Fatalf("Elections: %v", err)
+	}
+	if len(recs) == 0 {
+		t.Fatal("no elections parsed")
+	}
+	if recs[0].SgID == "" || recs[0].SgName == "" || recs[0].VoteDate == "" {
+		t.Errorf("election fields empty: %+v", recs[0])
+	}
+}
+
 func TestTurnoutNoData(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<?xml version="1.0"?><response><header>` +

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><response>
+<header>
+<resultCode>INFO-00</resultCode>
+<resultMsg>NORMAL SERVICE</resultMsg>
+</header>
+<body>
+<items>
+  <item>
+    <num>1</num>
+    <sgId>19871216</sgId>
+    <sgName>제13대 대통령선거</sgName>
+    <sgTypecode>0</sgTypecode>
+    <sgVotedate>19871216</sgVotedate>
+  </item>
+  <item>
+    <num>2</num>
+    <sgId>19871216</sgId>
+    <sgName>대통령선거</sgName>
+    <sgTypecode>1</sgTypecode>
+    <sgVotedate>19871216</sgVotedate>
+  </item>
+</items>
+<numOfRows>2</numOfRows>
+<pageNo>1</pageNo>
+<totalCount>192</totalCount>
+</body>
+</response>
