@@ -17,6 +17,37 @@
 > 정의가 명확한 표준 파생값)을 광범위하고 중립적으로 제공할 뿐이고, 플래그·점수·"이상치"·
 > 해석은 전적으로 소비자(사람 또는 AI 에이전트)의 몫이다.
 
+## Before → After — 같은 데이터, 며칠 vs 몇 초
+
+같은 공개 데이터인데 기존엔 **막히거나, 가입·신청·승인·인코딩·파싱**을 다 거쳐야 했다.
+kvote 는 그걸 **한 명령**으로 줄인다.
+
+| 데이터 | 기존 (Before) | kvote (After) |
+|---|---|---|
+| **투표율·당선인** (data.go.kr OpenAPI) | 회원가입·본인인증 → API 검색 → 활용신청 폼·승인 대기 → 인증키 발급(Encoding/Decoding 혼란) → sgId·선거종류 코드 찾기 → XML 직접 호출 → 100행 페이징 → 파싱 | `kvote api login` *(1회)*<br>`kvote nec winners 20240410 --sgtype 2` |
+| **개표결과** (투표구별) | info.nec.go.kr 차단(robots·JSF) → data.go.kr 데이터셋 수동 검색 → CSV(EUC-KR) 다운 → 인코딩 변환 → long-format 수작업 파싱·투표구 중복 처리 | `kvote nec results <pk>` |
+| **여론조사** (NESDC) | 게시판 클릭 → 글마다 PDF 다운 → 표 일일이 판독 *(공식 API 없음)* | `kvote nesdc sync` |
+
+가장 극적인 건 OpenAPI 발급 흐름 — kvote 가 **로그인·활용신청·키 관리·코드 해석·페이징**을 다 흡수한다:
+
+```mermaid
+flowchart LR
+    subgraph B["기존 — 당선인 데이터 받기 (수십 분 ~ 며칠, 개발 지식 필요)"]
+        direction TB
+        b1["회원가입·본인인증"] --> b2["API 검색·활용신청 폼"]
+        b2 --> b3["승인 대기 → 인증키 발급"]
+        b3 --> b4["sgId·선거종류 코드 알아내기"]
+        b4 --> b5["XML 호출 직접 작성"]
+        b5 --> b6["100행 페이징 처리 → 파싱"]
+    end
+    subgraph A["kvote — 몇 초"]
+        direction TB
+        a1["kvote api login<br/>(최초 1회)"] --> a2["kvote nec winners<br/>20240410 --sgtype 2"]
+        a2 --> a3["구조화된 JSON ✓"]
+    end
+    B ==>|kvote 가 전부 흡수| A
+```
+
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.25+-00ADD8.svg" alt="Go" />
   <img src="https://img.shields.io/badge/output-json%20%7C%20jsonl%20%7C%20table-informational" alt="output formats" />
