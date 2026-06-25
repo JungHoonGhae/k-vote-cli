@@ -27,7 +27,7 @@ import (
 const DefaultBaseURL = "https://www.data.go.kr"
 
 // DefaultUserAgent identifies the client honestly to the server operator.
-const DefaultUserAgent = "kvote-cli (+https://github.com/JungHoonGhae/kvote-cli)"
+const DefaultUserAgent = "k-vote-cli (+https://github.com/JungHoonGhae/k-vote-cli)"
 
 // DefaultDelay is the minimum spacing between requests.
 const DefaultDelay = 700 * time.Millisecond

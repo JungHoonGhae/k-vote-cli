@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/JungHoonGhae/kvote-cli/internal/datagokr"
-	"github.com/JungHoonGhae/kvote-cli/internal/output"
+	"github.com/JungHoonGhae/k-vote-cli/internal/datagokr"
+	"github.com/JungHoonGhae/k-vote-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

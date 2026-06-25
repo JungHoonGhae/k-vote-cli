@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JungHoonGhae/kvote-cli/internal/nec"
-	"github.com/JungHoonGhae/kvote-cli/internal/nesdc"
-	"github.com/JungHoonGhae/kvote-cli/internal/output"
+	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
+	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
+	"github.com/JungHoonGhae/k-vote-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

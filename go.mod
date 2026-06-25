@@ -1,4 +1,4 @@
-module github.com/JungHoonGhae/kvote-cli
+module github.com/JungHoonGhae/k-vote-cli
 
 go 1.26.1
 

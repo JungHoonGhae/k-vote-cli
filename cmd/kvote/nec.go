@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/JungHoonGhae/kvote-cli/internal/nec"
-	"github.com/JungHoonGhae/kvote-cli/internal/output"
+	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
+	"github.com/JungHoonGhae/k-vote-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
