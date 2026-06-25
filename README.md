@@ -100,7 +100,7 @@ flowchart LR
 | `nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 (제N회/제N대 파싱) | — |
 | `nec pull <pk\|dataId>` | 개표결과 원본 다운로드 (CSV/XLSX 자동) | `-o` 저장 위치 · `--source`(개방포털은 dataId) |
 | `nec results <pk>` | 개표결과를 **투표구별로 정규화** (CSV=총선·대선, XLSX=지방선거 멀티시트) | `--file` 로컬 파싱 · `--aggregate {town\|sgg\|sido\|national}` 다단계 집계 · `--by-votetype` 투표유형 분리 · `--race`/`--leaf-only`(XLSX) |
-| **`nec corpus`** ⭐ | **역대 핵심 개표결과(대선·총선·비례·지방 7·8회)를 한 명령으로 동시 다운로드** | `--normalize` 받는 즉시 투표구별 JSONL(분석 즉시) · `-o` · `--concurrency` |
+| **`nec corpus`** ⭐ | **역대 핵심 개표결과(대선 제16·17·21대·총선·비례·지방 5~8회)를 한 명령으로 동시 다운로드** | `--normalize` 받는 즉시 투표구별 JSONL(분석 즉시) · `-o` · `--concurrency` |
 
 > **킬러.** `nec corpus --normalize` 한 줄이면 핵심 개표결과 전부가 분석 가능한 JSONL로 떨어집니다 — 검증가의 "다운로드+사전준비"가 한 번에.
 

@@ -22,7 +22,7 @@
 
 | 명령 | 무엇을 주나 |
 |---|---|
-| **`kvote nec corpus [--normalize]`** | **핵심 개표결과(대선·총선·비례·지방 7·8회) 한 명령 동시 다운로드** (+`--normalize` 투표구별 JSONL). 키 불필요. **시작점** |
+| **`kvote nec corpus [--normalize]`** | **핵심 개표결과(대선 제16·17·21대·총선·비례·지방 5~8회) 한 명령 동시 다운로드** (+`--normalize` 투표구별 JSONL). 키 불필요. **시작점** |
 | `kvote nec results <pk> [--file F]` | 개표결과 정규화 (투표구별; `--aggregate` 집계, `--by-votetype` 분리, XLSX는 `--race --leaf-only`) |
 | `kvote nec datasets [-q]` | 선관위 공개 파일 데이터 검색(개표결과 등) → `publicDataPk` |
 | `kvote nec pull <pk>` | 개표결과 원본(CSV/XLSX) 다운로드 |
