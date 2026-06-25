@@ -33,6 +33,15 @@
 | `kvote nec datasets [-q]` | 선관위 공개 파일 데이터 검색(개표결과 등) → `publicDataPk` |
 | `kvote nec pull <pk>` | 개표결과 원본(CSV/XLSX) 다운로드 |
 | `kvote nec results <pk> [--file F]` | 개표결과 정규화 (투표구별; `--aggregate` 집계, `--by-votetype` 분리, XLSX는 `--race --leaf-only`) |
+| `kvote nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 |
+| `kvote nec elections [-q --sgtype]` | **선거코드 레지스트리** (모든 sgId·선거명·선거종류·투표일, 1987~) — OpenAPI |
+| `kvote nec turnout <sgId> --sgtype N` | 투표율(시도/구시군별, 본·사전 분리) — OpenAPI |
+| `kvote nec winners <sgId> --sgtype N` | 당선인(선거구·기호·정당·이름·득표수·득표율) — OpenAPI |
+| `kvote api login / list / apply / config / logout` | data.go.kr 계정 연동(OpenAPI 활용신청·인증키·만료 자동 관리) |
+
+OpenAPI 명령(`elections/turnout/winners`)은 인증키 필요 — `KVOTE_DATAGOKR_KEY` 환경변수 또는
+`--api-key`. 키가 없으면 `kvote api login` → `kvote api apply <pk>` 로 발급(자동승인). 키는 비밀이니
+로그·커밋 금지. `--sgtype`: 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원.
 
 전 명령은 `--help`로 자기 설명. 모르면 `kvote <cmd> --help`부터.
 
@@ -101,6 +110,30 @@ kvote nec results <publicDataPk> -f jsonl     # CSV/XLSX 자동 판별, 같은 �
 kvote nec results 15101509 --file ./downloads/*.xlsx --race 교육감 --leaf-only -f jsonl
 ```
 
+### 2.7 OpenAPI 대규모 전수 수집 (분석가용)
+
+`nec elections`로 모든 선거를 **열거**한 뒤 `turnout`/`winners`를 **루프로 전수** 받는다.
+출력이 JSONL이라 그대로 duckdb/pandas에 흘려보낼 수 있다.
+
+```bash
+export KVOTE_DATAGOKR_KEY=...   # api login → api apply 로 발급
+
+# 모든 대선의 시도별 투표율을 한 파일로
+kvote nec elections -q 대통령선거 --sgtype 1 -f jsonl \
+  | jq -r .sgId \
+  | while read id; do kvote nec turnout "$id" --sgtype 1 -f jsonl; done > /tmp/pres_turnout.jsonl
+
+# 모든 총선 당선인(역대 지역구)을 한 파일로
+kvote nec elections -q 국회의원선거 --sgtype 2 -f jsonl \
+  | jq -r .sgId \
+  | while read id; do kvote nec winners "$id" --sgtype 2 -f jsonl; done > /tmp/winners.jsonl
+
+# duckdb 로 교차 질의 (예: 정당별 당선 수 시계열)
+duckdb -c "SELECT sgId, party, count(*) n FROM read_json_auto('/tmp/winners.jsonl')
+           GROUP BY 1,2 ORDER BY 1,3 DESC"
+```
+정중한 수집: `--delay`(기본 700ms)가 요청 간격을 보장한다. 전수 루프도 이 간격을 지킨다.
+
 ## 3. 큰 데이터 다루는 법 (Context 절약)
 
 - **절대** 7MB CSV·수만 행을 통째로 읽어 컨텍스트에 넣지 마라.
@@ -121,6 +154,10 @@ kvote nec results 15101509 --file ./downloads/*.xlsx --race 교육감 --leaf-onl
 - **voteType**: `본투표`/`관내사전`/`관외사전`/`거소`. **득표율 정의**: `share = 후보득표 / 유효투표수`,
   `turnout = 투표수 / 선거인수`, `유효투표수 = 투표수 − 무효`. 다른 정의가 필요하면 원자료로 직접 계산.
 - **nesdc --crosstab**: `{total,crosstabs:[{dimension,cells:[{category,completed,weighted}]}],weighting,marginError}`.
+- **nec turnout** (OpenAPI): `{sgId,sgTypecode,sido,gusigun,electorate,votes,turnout,psSunsu,psEtcSunsu,psTusu,psEtcTusu}`
+  — `sido/gusigun="합계"`는 집계 행. `ps*/psEtc*`는 API의 본투표 명부/사전 성격 2분할(verbatim 보존).
+- **nec winners** (OpenAPI): `{sgId,sgTypecode,sido,sgg,gusigun,giho,party,name,...,votes,voteRate}` — `votes/voteRate`=득표수/득표율.
+- **nec elections** (OpenAPI): `{sgId,sgName,sgTypecode,voteDate}` — `sgTypecode 0`=상위 항목, `1~7`=개별 선거(turnout/winners용).
 
 ## 5. 하지 말 것
 
