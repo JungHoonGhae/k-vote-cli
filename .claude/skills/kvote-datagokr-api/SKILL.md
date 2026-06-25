@@ -34,7 +34,12 @@ kvote api login          # 로그인 후 그 브라우저는 백그라운드로 
 kvote api list -f table
 kvote api list -f json | jq '.[] | {title, status, expiresAt}'
 
-# (3) 세션 종료(선택) — 브라우저 닫고 상태 정리
+# (3) 활용신청 — 자동승인 OpenAPI 1건. 목적 필수, 제출 전 확인.
+kvote api apply <publicDataPk> --purpose "선거 투표율 분석 연구" --category research
+#   --category: research(기본)|web|app|ref|etc   --yes: 확인 생략
+#   계정에 실제 신청을 생성하는 동작 → 한 번에 한 건, 목적 필수(§3 참조).
+
+# (4) 세션 종료(선택) — 브라우저 닫고 상태 정리
 kvote api logout
 ```
 

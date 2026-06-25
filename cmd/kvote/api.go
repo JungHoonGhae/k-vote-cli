@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/JungHoonGhae/kvote-cli/internal/datagokr"
 	"github.com/JungHoonGhae/kvote-cli/internal/output"
@@ -26,8 +28,84 @@ kvote 가 그 브라우저를 살려두고 Chrome DevTools Protocol 로 다시 �
 이후 명령들을 처리합니다 — 키체인 묻지 않음, 재로그인 없음.`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(apiLoginCmd(), apiListCmd(), apiLogoutCmd())
+	c.AddCommand(apiLoginCmd(), apiListCmd(), apiApplyCmd(), apiLogoutCmd())
 	return c
+}
+
+func apiApplyCmd() *cobra.Command {
+	var purpose, category string
+	var yes bool
+	c := &cobra.Command{
+		Use:   "apply <publicDataPk>",
+		Short: "OpenAPI 활용신청 (자동승인) — 목적 필수, 제출 전 확인",
+		Long: `data.go.kr OpenAPI 1건의 활용신청을 자동 제출합니다(자동승인). 신청은
+계정에 실제 신청을 생성하는 동작이라, kvote 는 **한 번에 한 건만** 처리하고
+**활용목적(--purpose)을 반드시 요구**하며 제출 전 확인합니다 (투기적 대량신청 금지).
+
+  --purpose   활용목적 내용 (필수)
+  --category  목적분류: research(연구·기본) | web | app | ref | etc
+  --yes       확인 프롬프트 생략
+
+예) kvote api apply 15000908 --purpose "선거 투표율 분석 연구" --category research`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			cat := mapCategory(category)
+			confirm := func(s datagokr.ApplySummary) bool {
+				if yes {
+					return true
+				}
+				fmt.Fprintf(cmd.ErrOrStderr(), "\n다음 내용으로 활용신청을 제출합니다:\n")
+				fmt.Fprintf(cmd.ErrOrStderr(), "  데이터: %s (pk=%s)\n", s.DataName, s.PublicDataPk)
+				fmt.Fprintf(cmd.ErrOrStderr(), "  상세기능: %d개  목적분류: %s\n", s.Operations, s.Category)
+				fmt.Fprintf(cmd.ErrOrStderr(), "  활용목적: %s\n", s.Purpose)
+				fmt.Fprint(cmd.ErrOrStderr(), "제출할까요? [y/N]: ")
+				line, _ := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+				line = strings.ToLower(strings.TrimSpace(line))
+				return line == "y" || line == "yes"
+			}
+			res, err := datagokr.Apply(cmd.Context(), args[0], purpose, cat, confirm)
+			if err != nil {
+				if errors.Is(err, datagokr.ErrNotLoggedIn) {
+					fmt.Fprintln(cmd.ErrOrStderr(), err)
+					return nil
+				}
+				return err
+			}
+			if format == output.JSON || format == output.JSONL {
+				return output.WriteJSON(cmd.OutOrStdout(), res)
+			}
+			if res.Submitted {
+				fmt.Fprintf(cmd.ErrOrStderr(), "✅ %s — `kvote api list` 로 확인하세요.\n", res.Message)
+			} else {
+				fmt.Fprintf(cmd.ErrOrStderr(), "⏹  %s\n", res.Message)
+			}
+			return nil
+		},
+	}
+	c.Flags().StringVar(&purpose, "purpose", "", "활용목적 내용 (필수)")
+	c.Flags().StringVar(&category, "category", "research", "목적분류: research|web|app|ref|etc")
+	c.Flags().BoolVar(&yes, "yes", false, "확인 프롬프트 생략")
+	c.MarkFlagRequired("purpose")
+	return c
+}
+
+func mapCategory(c string) string {
+	switch strings.ToLower(c) {
+	case "web":
+		return datagokr.PurposeWeb
+	case "app":
+		return datagokr.PurposeApp
+	case "ref":
+		return datagokr.PurposeRef
+	case "etc":
+		return datagokr.PurposeEtc
+	default:
+		return datagokr.PurposeResearch
+	}
 }
 
 func apiLoginCmd() *cobra.Command {
