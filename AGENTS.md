@@ -30,6 +30,7 @@
 | `kvote nesdc bulk` | data 게시판 누적 마스터 엑셀 → 정규화 정당지지율 레코드(2023.10.30~ 전체) |
 | `kvote nesdc show <nttId> [--crosstab]` | 단건 상세 메타 + **표본 구성** 교차표(성별·연령·지역 × 완료·가중) |
 | `kvote nesdc pull <nttId>` | 첨부 PDF(통계표·설문지) 다운로드 |
+| `kvote doctor` | 킬러 경로 라이브 점검(사이트 개편 깨짐 감지). 실패 시 비정상 종료코드 |
 | `kvote nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 |
 | `kvote nec elections [-q --sgtype]` | **선거코드 레지스트리** (모든 sgId·선거명·선거종류·투표일, 1987~) — OpenAPI |
 | `kvote nec turnout <sgId> --sgtype N` | 투표율(시도/구시군별, 본·사전 분리) — OpenAPI |

@@ -39,6 +39,7 @@ func init() {
 	rootCmd.AddCommand(nesdcCmd())
 	rootCmd.AddCommand(necCmd())
 	rootCmd.AddCommand(apiCmd())
+	rootCmd.AddCommand(doctorCmd())
 	rootCmd.AddCommand(versionCmd())
 }
 
