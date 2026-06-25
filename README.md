@@ -84,14 +84,10 @@ flowchart LR
 
 | 명령 | 하는 일 | 핵심 옵션 |
 |---|---|---|
-| `nesdc boards` | 수집 가능한 6개 게시판 목록 | — |
-| `nesdc list [board]` | 게시판 목록 (여론조사 등록현황 등) | `-q` 검색 · `--field`(조사기관/의뢰자/방식…) · `--from`/`--to` · `--date-field`(등록일/공표일/조사일) · `--gubun`(선거구분) |
+| `nesdc sync [board]` | 기간/조건 전체를 JSONL 로 일괄 수집 (전수 수집의 기본) | `-q`·`--field`·`--from`/`--to`·`--date-field`·`--gubun`·`--max-pages`·`--pull` |
+| `nesdc bulk` | 주차별 누적 마스터 엑셀 → 정규화 정당지지율 (2023.10.30~ 전체 1,400+건) | `--save` 원본 보존 |
 | `nesdc show <nttId>` | 단건 상세 메타 (기관·방식·표본·응답률·표본오차 + 전체 176행 필드) | `--crosstab`(표본 구성: 성별·연령·지역 × 완료·가중) |
 | `nesdc pull <nttId>` | 첨부 PDF(통계표·설문지) 다운로드 | `-o` 저장 위치 |
-| `nesdc sync [board]` | 기간/조건 전체를 JSONL 로 일괄 수집 | `--from`/`--to`/`--max-pages`/`--pull` |
-| `nesdc bulk` | 주차별 누적 마스터 엑셀 → 정규화 정당지지율 (2023.10.30~ 전체 1,400+건) | `--save` 원본 보존 |
-| `nesdc elections` | 선거구분 코드(`--gubun` 값) 실시간 조회 | — |
-| `nesdc agencies` | 조사기관 등록현황 | `--cancelled` 취소현황 |
 
 #### `nec` — 개표결과·투표율·당선인 (중앙선거관리위원회)
 
@@ -104,8 +100,11 @@ flowchart LR
 | `nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 (제N회/제N대 파싱) | — |
 | `nec pull <pk\|dataId>` | 개표결과 원본 다운로드 (CSV/XLSX 자동) | `-o` 저장 위치 · `--source`(개방포털은 dataId) |
 | `nec results <pk>` | 개표결과를 **투표구별로 정규화** (CSV=총선·대선, XLSX=지방선거 멀티시트) | `--file` 로컬 파싱 · `--aggregate {town\|sgg\|sido\|national}` 다단계 집계 · `--by-votetype` 투표유형 분리 · `--race`/`--leaf-only`(XLSX) |
+| **`nec corpus`** ⭐ | **역대 핵심 개표결과(대선·총선·비례·지방 7·8회)를 한 명령으로 동시 다운로드** | `--normalize` 받는 즉시 투표구별 JSONL(분석 즉시) · `-o` · `--concurrency` |
 
-**OpenAPI 기반** (인증키 필요 — `kvote api` 로 자동 발급). `<sgId>`=선거일 `YYYYMMDD`,
+> **킬러.** `nec corpus --normalize` 한 줄이면 핵심 개표결과 전부가 분석 가능한 JSONL로 떨어집니다 — 검증가의 "다운로드+사전준비"가 한 번에.
+
+**OpenAPI 기반** *(실험적 — 키리스 경로가 우선. 투표율·당선인은 `nec results --aggregate`로도 파생됨)*. 인증키 필요(`kvote api` 로 자동 발급). `<sgId>`=선거일 `YYYYMMDD`,
 `--sgtype` 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원:
 
 | 명령 | 하는 일 | 핵심 옵션 |
@@ -113,7 +112,10 @@ flowchart LR
 | `nec turnout <sgId>` | 투표율 (시도/구시군별) — 본투표/사전 분리 포함 | `--sgtype` · `--api-key`(기본 `KVOTE_DATAGOKR_KEY`) |
 | `nec winners <sgId>` | 당선인 (선거구·기호·정당·이름·득표수·득표율) | `--sgtype` · `--api-key` |
 
-#### `api` — data.go.kr 계정 연동 (OpenAPI 활용신청 자동화)
+#### `api` — data.go.kr 계정 연동 (OpenAPI 활용신청 자동화) *(실험적)*
+
+> 키리스가 핵심 미션이라 이 레이어는 **보조·실험적**입니다(별도 도구로 분리 후보). 단,
+> 활용신청 자동화는 **아무도 안 한 영역**이라 그 자체로 가치가 있어 유지합니다.
 
 CAPTCHA·소셜 로그인이라 완전 자동화는 불가. `api login` 으로 브라우저에서 **한 번 로그인**하면
 kvote 가 그 세션을 살려두고 Chrome DevTools Protocol 로 다시 붙어 이후 명령을 처리합니다
@@ -179,40 +181,28 @@ make build        # -> bin/kvote   (또는 make install 로 $GOBIN 에)
 ## Quick Start
 
 ```bash
-# 여론조사 결과 최신 목록 (표 형식)
-kvote nesdc list -f table
+# --- NEC: 핵심 개표결과를 한 명령으로 (킬러) ---
+kvote nec corpus --normalize -o ./corpus             # 역대 핵심 개표결과 동시 다운로드 + 투표구별 JSONL
+duckdb -c "SELECT * FROM read_json_auto('./corpus/*.jsonl') LIMIT 5"   # 바로 분석
 
-# 검색·기간 필터 (--field 로 검색 대상 지정, --date-field 로 기간 기준 지정)
-kvote nesdc list -q 리얼미터 --field agency -f table
-kvote nesdc list --from 2025-01-01 --to 2025-01-31 --date-field registered -f table
-kvote nesdc list --gubun VT044 -f table                  # 제22대 대통령선거만
-
-# 선거구분 코드(--gubun 값) 실시간 조회
-kvote nesdc elections -f table
-
-# 단건 상세 메타데이터 (기관·방식·표본·응답률·표본오차·공표일시 + 교차표)
-kvote nesdc show 19366
-kvote nesdc show 19366 --crosstab -f table   # 표본 구성(성별·연령·지역 × 완료·가중)
-
-# 첨부파일(통계표·설문지 PDF) 다운로드
-kvote nesdc pull 19366 -o ./downloads
-
-# 주차별 누적 마스터 엑셀 → 정규화된 여론조사 레코드 (정당지지율 포함)
-kvote nesdc bulk -f jsonl > polls.jsonl                   # 2023.10.30~ 전체 누적
-kvote nesdc bulk --save ./archive -f json                # 원본 엑셀도 보존
-
-# 조사기관 등록현황 / 취소현황
-kvote nesdc agencies -f table
-kvote nesdc agencies --cancelled -f table
-
-# 전체 일괄 수집 → JSONL (대규모 분석용)
-kvote nesdc sync --from 2026-01-01 > surveys.jsonl
-kvote nesdc sync --max-pages 5 --pull -o ./archive   # 메타 + 첨부 동시 수집
-
-# --- NEC: 선관위 개표결과·투표율 (data.go.kr 공개 파일, 키 불필요) ---
+# 개별 데이터셋: 검색 → 정규화
 kvote nec datasets -q 개표결과 -f table              # 선관위 공개 데이터셋 검색
-kvote nec pull 15025527 -o ./downloads               # 제22대 총선 개표결과 CSV 원본
 kvote nec results 15025527 -f jsonl > votes.jsonl    # 투표구별 정규화 (후보 득표 포함)
+kvote nec pull 15025527 -o ./downloads               # 원본 CSV 가 필요하면
+
+# --- NESDC: 여론조사 (전수 수집 → 분석) ---
+# 기간/조건 전체를 JSONL 로 (검색·기간 필터는 sync 에 그대로)
+kvote nesdc sync --from 2026-01-01 > surveys.jsonl
+kvote nesdc sync -q 리얼미터 --field agency --from 2025-01-01 --to 2025-01-31 -f jsonl
+kvote nesdc sync --max-pages 5 --pull -o ./archive   # 메타 + 첨부 PDF 동시 수집
+
+# 단건 상세 + 표본 구성(검증가가 "누구를 조사했나" 확인)
+kvote nesdc show 19366 --crosstab -f table
+
+# 주차별 누적 마스터 엑셀 → 정규화 정당지지율 (2023.10.30~ 전체 누적)
+kvote nesdc bulk -f jsonl > polls.jsonl
+
+# 집계·XLSX·개방포털 (참고)
 kvote nec results --file ./downloads/*.csv -f jsonl  # 이미 받은 CSV 파싱 (재다운로드 X)
 # 집계 뷰 (중립 파라미터 — 비교·판단은 소비자/AI 에이전트가)
 kvote nec results 15025527 --aggregate sgg --by-votetype -f jsonl   # 선거구×투표유형
@@ -242,13 +232,13 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl   # 제22대 총선 당선인 254
 | `--field` | 검색 대상 필드 | `agency` `client` `method` `frame` `name` `sido` `regno` |
 | `--from` / `--to` | 기간 | `YYYY-MM-DD` |
 | `--date-field` | 기간 기준 | `registered`(기본) `published` `surveyed` |
-| `--gubun` | 선거구분 | `nesdc elections` 코드 (예: `VT044`) |
+| `--gubun` | 선거구분 | 선거구분 코드 (예: `VT044` 제22대 대선) |
 
 > 포털은 `--date-field` 없이는 기간 필터를 무시합니다 — kvote 는 기간 지정 시 자동으로 `registered` 를 기본 적용합니다.
 
 ## 게시판 (nesdc)
 
-`kvote nesdc boards` 로 확인. 모두 동일한 엔진으로 처리됩니다.
+`sync`/`show`/`pull` 의 `[board]` 인자값. 모두 동일한 엔진으로 처리됩니다.
 
 | name | 내용 |
 |---|---|

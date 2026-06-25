@@ -22,17 +22,14 @@
 
 | 명령 | 무엇을 주나 |
 |---|---|
-| `kvote nesdc list [board]` | 여론조사/게시판 목록 (필터: `-q --field --from --to --date-field --gubun`) |
-| `kvote nesdc show <nttId>` | 단건 상세 메타 (기관·방식·표본·응답률·표본오차 + 전체 Fields) |
-| `kvote nesdc show <nttId> --crosstab` | **표본 구성** 교차표 (성별·연령·지역 × 완료·가중 사례수) |
-| `kvote nesdc pull <nttId>` | 첨부 PDF(통계표·설문지) 다운로드 |
-| `kvote nesdc sync [board]` | 기간/조건 전체를 JSONL로 일괄 수집 |
-| `kvote nesdc bulk` | data 게시판 누적 마스터 엑셀 → 정규화 정당지지율 레코드(2023.10.30~ 전체) |
-| `kvote nesdc elections` | 선거구분 코드(`--gubun` 값) 실시간 조회 |
-| `kvote nesdc agencies [--cancelled]` | 조사기관 등록/취소 현황 |
+| **`kvote nec corpus [--normalize]`** | **핵심 개표결과(대선·총선·비례·지방 7·8회) 한 명령 동시 다운로드** (+`--normalize` 투표구별 JSONL). 키 불필요. **시작점** |
+| `kvote nec results <pk> [--file F]` | 개표결과 정규화 (투표구별; `--aggregate` 집계, `--by-votetype` 분리, XLSX는 `--race --leaf-only`) |
 | `kvote nec datasets [-q]` | 선관위 공개 파일 데이터 검색(개표결과 등) → `publicDataPk` |
 | `kvote nec pull <pk>` | 개표결과 원본(CSV/XLSX) 다운로드 |
-| `kvote nec results <pk> [--file F]` | 개표결과 정규화 (투표구별; `--aggregate` 집계, `--by-votetype` 분리, XLSX는 `--race --leaf-only`) |
+| `kvote nesdc sync [board]` | 여론조사 기간/조건 전체를 JSONL로 일괄 수집 (필터: `-q --field --from --to --date-field --gubun --pull`) |
+| `kvote nesdc bulk` | data 게시판 누적 마스터 엑셀 → 정규화 정당지지율 레코드(2023.10.30~ 전체) |
+| `kvote nesdc show <nttId> [--crosstab]` | 단건 상세 메타 + **표본 구성** 교차표(성별·연령·지역 × 완료·가중) |
+| `kvote nesdc pull <nttId>` | 첨부 PDF(통계표·설문지) 다운로드 |
 | `kvote nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 |
 | `kvote nec elections [-q --sgtype]` | **선거코드 레지스트리** (모든 sgId·선거명·선거종류·투표일, 1987~) — OpenAPI |
 | `kvote nec turnout <sgId> --sgtype N` | 투표율(시도/구시군별, 본·사전 분리) — OpenAPI |
