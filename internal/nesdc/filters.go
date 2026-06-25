@@ -1,12 +1,8 @@
 package nesdc
 
 import (
-	"context"
-	"net/url"
 	"sort"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 // SearchField maps a friendly CLI name to the results board's searchCnd code.
@@ -58,36 +54,4 @@ func SortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// Election is one option of the results board's 선거구분 (pollGubuncd) filter.
-type Election struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
-}
-
-// Elections scrapes the live 선거구분 dropdown from the results board so callers
-// can discover valid --gubun codes without an API key. The empty placeholder
-// option (":: 선거구분 ::") is omitted.
-func (c *Client) Elections(ctx context.Context) ([]Election, error) {
-	b, err := BoardByName("results")
-	if err != nil {
-		return nil, err
-	}
-	q := url.Values{}
-	q.Set("menuNo", b.MenuNo)
-	doc, err := c.getDoc(ctx, "/bbs/"+b.BbsID+"/list.do", q)
-	if err != nil {
-		return nil, err
-	}
-	var out []Election
-	doc.Find(`select[name="pollGubuncd"] option`).Each(func(_ int, s *goquery.Selection) {
-		code, _ := s.Attr("value")
-		name := cleanText(s.Text())
-		if code == "" || strings.Contains(name, "선거구분") {
-			return
-		}
-		out = append(out, Election{Code: code, Name: name})
-	})
-	return out, nil
 }

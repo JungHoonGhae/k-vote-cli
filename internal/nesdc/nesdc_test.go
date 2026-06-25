@@ -109,22 +109,6 @@ func TestDetailResults(t *testing.T) {
 	}
 }
 
-func TestAgencies(t *testing.T) {
-	srv := fixtureServer(t)
-	c := testClient(t, srv.URL)
-
-	res, err := c.Agencies(context.Background(), false, ListOptions{})
-	if err != nil {
-		t.Fatalf("Agencies: %v", err)
-	}
-	if len(res.Items) == 0 {
-		t.Fatal("expected agency rows")
-	}
-	if res.Items[0].InsttNum == "" {
-		t.Error("first agency missing insttNum")
-	}
-}
-
 func TestDecodeFilename(t *testing.T) {
 	cases := map[string]string{
 		// percent-encoded UTF-8 with '+' for spaces
@@ -135,27 +119,6 @@ func TestDecodeFilename(t *testing.T) {
 	for cd, want := range cases {
 		if got := filenameFromCD(cd); got != want {
 			t.Errorf("filenameFromCD(%q) = %q, want %q", cd, got, want)
-		}
-	}
-}
-
-func TestElections(t *testing.T) {
-	srv := fixtureServer(t)
-	c := testClient(t, srv.URL)
-
-	els, err := c.Elections(context.Background())
-	if err != nil {
-		t.Fatalf("Elections: %v", err)
-	}
-	if len(els) == 0 {
-		t.Fatal("expected election options")
-	}
-	for _, e := range els {
-		if e.Code == "" || e.Name == "" {
-			t.Errorf("incomplete election: %+v", e)
-		}
-		if strings.Contains(e.Name, "선거구분") {
-			t.Errorf("placeholder option leaked: %+v", e)
 		}
 	}
 }

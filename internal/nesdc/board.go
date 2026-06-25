@@ -50,12 +50,3 @@ func BoardNames() []string {
 	sort.Strings(names)
 	return names
 }
-
-// Boards returns all registered boards, sorted by name.
-func Boards() []Board {
-	out := make([]Board, 0, len(boards))
-	for _, n := range BoardNames() {
-		out = append(out, boards[n])
-	}
-	return out
-}
