@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/JungHoonGhae/kvote-cli/internal/nec"
 	"github.com/JungHoonGhae/kvote-cli/internal/output"
@@ -27,8 +29,152 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd(), necElectionsCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd(), necElectionsCmd(), necCorpusCmd())
 	return c
+}
+
+// necCorpusCmd downloads the curated core election-results corpus concurrently —
+// "핵심 개표결과를 한 명령으로 빠르게". With --normalize it also writes a
+// per-dataset JSONL ready for duckdb/pandas, so a verifier is one command from
+// analysis-ready data.
+func necCorpusCmd() *cobra.Command {
+	var outDir string
+	var concurrency int
+	var normalize bool
+	c := &cobra.Command{
+		Use:   "corpus",
+		Short: "핵심 개표결과 코퍼스 동시 다운로드 (+--normalize JSONL)",
+		Long: `역대 핵심 개표결과(대선·총선·비례·지방 7·8회)를 한 명령으로 동시 다운로드합니다.
+키 불필요. 고정된 핵심 데이터셋 목록(역사적이라 안정적)을 병렬로 받습니다.
+
+  -o            저장 디렉터리 (기본: downloads/nec/corpus)
+  --concurrency 동시 다운로드 수 (기본 4; rate limit 은 그대로 적용)
+  --normalize   받은 즉시 투표구별 정규화 → 데이터셋별 .jsonl (분석 즉시 가능)
+
+예) kvote nec corpus --normalize -o ./corpus
+    duckdb -c "SELECT * FROM read_json_auto('./corpus/*.jsonl') LIMIT 5"`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			dir := outDir
+			if dir == "" {
+				dir = filepath.Join("downloads", "nec", "corpus")
+			}
+			if concurrency < 1 {
+				concurrency = 1
+			}
+			client := newNECClient()
+			results := make([]corpusResult, len(nec.CoreCorpus))
+			sem := make(chan struct{}, concurrency)
+			var wg sync.WaitGroup
+			for i, entry := range nec.CoreCorpus {
+				wg.Add(1)
+				go func(i int, entry nec.CorpusEntry) {
+					defer wg.Done()
+					sem <- struct{}{}
+					defer func() { <-sem }()
+					results[i] = downloadCorpusEntry(cmd, client, entry, dir, normalize)
+				}(i, entry)
+			}
+			wg.Wait()
+			return renderCorpus(cmd, format, results)
+		},
+	}
+	c.Flags().StringVarP(&outDir, "out", "o", "", "저장 디렉터리 (기본: downloads/nec/corpus)")
+	c.Flags().IntVar(&concurrency, "concurrency", 4, "동시 다운로드 수")
+	c.Flags().BoolVar(&normalize, "normalize", false, "다운로드 즉시 투표구별 정규화 → .jsonl")
+	return c
+}
+
+type corpusResult struct {
+	Label string `json:"label"`
+	Pk    string `json:"publicDataPk"`
+	File  string `json:"file,omitempty"`
+	JSONL string `json:"jsonl,omitempty"`
+	Rows  int    `json:"rows,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+func downloadCorpusEntry(cmd *cobra.Command, client *nec.Client, entry nec.CorpusEntry, dir string, normalize bool) corpusResult {
+	r := corpusResult{Label: entry.Label, Pk: entry.PublicDataPk}
+	path, err := client.Download(cmd.Context(), entry.PublicDataPk, dir)
+	if err != nil {
+		r.Error = err.Error()
+		return r
+	}
+	r.File = path
+	if !normalize {
+		return r
+	}
+	rows, jsonlPath, err := normalizeToJSONL(path)
+	if err != nil {
+		r.Error = "정규화 실패: " + err.Error()
+		return r
+	}
+	r.JSONL, r.Rows = jsonlPath, rows
+	return r
+}
+
+// normalizeToJSONL parses a downloaded results file (CSV or XLSX) and writes a
+// sibling .jsonl. Format is detected from content (isXLSX), matching `nec results`.
+func normalizeToJSONL(path string) (rows int, jsonlPath string, err error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return 0, "", err
+	}
+	jsonlPath = strings.TrimSuffix(path, filepath.Ext(path)) + ".jsonl"
+	f, err := os.Create(jsonlPath)
+	if err != nil {
+		return 0, "", err
+	}
+	defer f.Close()
+
+	if isXLSX(raw) {
+		ers, err := nec.ParseResultsXLSX(raw)
+		if err != nil {
+			return 0, "", err
+		}
+		items := make([]any, len(ers))
+		for i := range ers {
+			items[i] = ers[i]
+		}
+		return len(ers), jsonlPath, output.WriteJSONL(f, items)
+	}
+	recs, err := nec.ParseResults(raw)
+	if err != nil {
+		return 0, "", err
+	}
+	items := make([]any, len(recs))
+	for i := range recs {
+		items[i] = recs[i]
+	}
+	return len(recs), jsonlPath, output.WriteJSONL(f, items)
+}
+
+func renderCorpus(cmd *cobra.Command, format output.Format, results []corpusResult) error {
+	switch format {
+	case output.JSONL:
+		items := make([]any, len(results))
+		for i := range results {
+			items[i] = results[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), results)
+	default:
+		headers := []string{"데이터", "pk", "파일", "행수", "오류"}
+		rows := make([][]string, 0, len(results))
+		for _, r := range results {
+			status := r.File
+			if r.JSONL != "" {
+				status = r.JSONL
+			}
+			rows = append(rows, []string{r.Label, r.Pk, status, fmt.Sprint(r.Rows), r.Error})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
 }
 
 // necElectionsCmd lists the NEC election-code registry so analysts can resolve
