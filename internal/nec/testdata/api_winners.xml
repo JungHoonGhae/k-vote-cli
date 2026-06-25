@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><response>
+<header>
+<resultCode>INFO-00</resultCode>
+<resultMsg>NORMAL SERVICE</resultMsg>
+</header>
+<body>
+<items>
+  <item>
+    <num>1</num>
+    <sgId>20250603</sgId>
+    <sgTypecode>1</sgTypecode>
+    <huboid>100153692</huboid>
+    <sggName>대한민국</sggName>
+    <sdName>전국</sdName>
+    <wiwName/>
+    <giho>1</giho>
+    <gihoSangse/>
+    <jdName>더불어민주당</jdName>
+    <name>이재명</name>
+    <hanjaName>李在明</hanjaName>
+    <gender>남</gender>
+    <birthday>19641222</birthday>
+    <age>60</age>
+    <addr>인천광역시 계양구 형제봉길</addr>
+    <jobId>72</jobId>
+    <job>국회의원(제22대 계양구을)</job>
+    <eduId>68</eduId>
+    <edu>중앙대학교 법과대학 법학과 졸업</edu>
+    <career1>(전)경기도지사</career1>
+    <career2>(전)더불어민주당 당대표</career2>
+    <dugsu>17287513</dugsu>
+    <dugyul>49.42</dugyul>
+  </item>
+</items>
+<numOfRows>1</numOfRows>
+<pageNo>1</pageNo>
+<totalCount>1</totalCount>
+</body>
+</response>

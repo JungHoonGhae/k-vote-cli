@@ -48,22 +48,6 @@ type TurnoutRecord struct {
 	PsEtcTusu  int     `json:"psEtcTusu"`
 }
 
-// apiEnvelope is the common data.go.kr OpenAPI response shape.
-type apiEnvelope struct {
-	Header struct {
-		ResultCode string `xml:"resultCode"`
-		ResultMsg  string `xml:"resultMsg"`
-	} `xml:"header"`
-	Body struct {
-		Items struct {
-			Item []voteItem `xml:"item"`
-		} `xml:"items"`
-		NumOfRows  int `xml:"numOfRows"`
-		PageNo     int `xml:"pageNo"`
-		TotalCount int `xml:"totalCount"`
-	} `xml:"body"`
-}
-
 type voteItem struct {
 	SgID       string  `xml:"sgId"`
 	SgTypecode string  `xml:"sgTypecode"`
@@ -86,7 +70,122 @@ type voteItem struct {
 // election/type yet (resultCode INFO-03) — common for an election whose
 // numbers the NEC has not finished publishing.
 func (c *Client) Turnout(ctx context.Context, serviceKey, sgID, sgType string) ([]TurnoutRecord, error) {
-	var out []TurnoutRecord
+	items, err := fetchPages[voteItem](c, ctx, voteSttusPath, serviceKey, sgID, sgType)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]TurnoutRecord, 0, len(items))
+	for _, it := range items {
+		out = append(out, TurnoutRecord{
+			SgID:       it.SgID,
+			SgTypecode: it.SgTypecode,
+			Sido:       it.SdName,
+			Gusigun:    it.WiwName,
+			Electorate: it.TotSunsu,
+			Votes:      it.TotTusu,
+			Turnout:    it.Turnout,
+			PsSunsu:    it.PsSunsu,
+			PsEtcSunsu: it.PsEtcSunsu,
+			PsTusu:     it.PsTusu,
+			PsEtcTusu:  it.PsEtcTusu,
+		})
+	}
+	return out, nil
+}
+
+// winnerPath is the 당선인 operation under WinnerInfoInqireService2.
+const winnerPath = "/WinnerInfoInqireService2/getWinnerInfoInqire"
+
+// WinnerRecord is one 당선인(winner) from getWinnerInfoInqire. Fields are
+// preserved losslessly from the API; only the opaque source names are renamed.
+// Votes/VoteRate are the API's own dugsu/dugyul (득표수/득표율).
+type WinnerRecord struct {
+	SgID       string  `json:"sgId"`
+	SgTypecode string  `json:"sgTypecode"`
+	Sido       string  `json:"sido"`    // sdName
+	Sgg        string  `json:"sgg"`     // sggName (선거구)
+	Gusigun    string  `json:"gusigun"` // wiwName
+	Giho       string  `json:"giho"`    // 기호
+	Party      string  `json:"party"`   // jdName (정당)
+	Name       string  `json:"name"`
+	HanjaName  string  `json:"hanjaName"`
+	Gender     string  `json:"gender"`
+	Birthday   string  `json:"birthday"`
+	Age        string  `json:"age"`
+	Addr       string  `json:"addr"`
+	Job        string  `json:"job"`
+	Edu        string  `json:"edu"`
+	Career1    string  `json:"career1"`
+	Career2    string  `json:"career2"`
+	Votes      int     `json:"votes"`    // dugsu (득표수)
+	VoteRate   float64 `json:"voteRate"` // dugyul (득표율)
+}
+
+type winnerItem struct {
+	SgID       string  `xml:"sgId"`
+	SgTypecode string  `xml:"sgTypecode"`
+	SggName    string  `xml:"sggName"`
+	SdName     string  `xml:"sdName"`
+	WiwName    string  `xml:"wiwName"`
+	Giho       string  `xml:"giho"`
+	JdName     string  `xml:"jdName"`
+	Name       string  `xml:"name"`
+	HanjaName  string  `xml:"hanjaName"`
+	Gender     string  `xml:"gender"`
+	Birthday   string  `xml:"birthday"`
+	Age        string  `xml:"age"`
+	Addr       string  `xml:"addr"`
+	Job        string  `xml:"job"`
+	Edu        string  `xml:"edu"`
+	Career1    string  `xml:"career1"`
+	Career2    string  `xml:"career2"`
+	Dugsu      int     `xml:"dugsu"`
+	Dugyul     float64 `xml:"dugyul"`
+}
+
+// Winners fetches every 당선인 for one election (sgId) and type (sgTypecode).
+// Like Turnout, an empty result with no error means the API has no data yet.
+func (c *Client) Winners(ctx context.Context, serviceKey, sgID, sgType string) ([]WinnerRecord, error) {
+	items, err := fetchPages[winnerItem](c, ctx, winnerPath, serviceKey, sgID, sgType)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]WinnerRecord, 0, len(items))
+	for _, it := range items {
+		out = append(out, WinnerRecord{
+			SgID: it.SgID, SgTypecode: it.SgTypecode,
+			Sido: it.SdName, Sgg: it.SggName, Gusigun: it.WiwName,
+			Giho: it.Giho, Party: it.JdName, Name: it.Name, HanjaName: it.HanjaName,
+			Gender: it.Gender, Birthday: it.Birthday, Age: it.Age, Addr: it.Addr,
+			Job: it.Job, Edu: it.Edu, Career1: it.Career1, Career2: it.Career2,
+			Votes: it.Dugsu, VoteRate: it.Dugyul,
+		})
+	}
+	return out, nil
+}
+
+// apiHeader is the common result header.
+type apiHeader struct {
+	ResultCode string `xml:"resultCode"`
+	ResultMsg  string `xml:"resultMsg"`
+}
+
+// apiEnvelope is the generic data.go.kr OpenAPI response shape.
+type apiEnvelope[T any] struct {
+	Header apiHeader `xml:"header"`
+	Body   struct {
+		Items struct {
+			Item []T `xml:"item"`
+		} `xml:"items"`
+		TotalCount int `xml:"totalCount"`
+	} `xml:"body"`
+}
+
+// fetchPages fetches all <item> rows of type T for one election across pages,
+// past the 100-row server cap. INFO-03 (no data) yields an empty slice, not an
+// error.
+func fetchPages[T any](c *Client, ctx context.Context, path, serviceKey, sgID, sgType string) ([]T, error) {
+	var out []T
 	for page := 1; ; page++ {
 		q := url.Values{}
 		q.Set("serviceKey", serviceKey)
@@ -95,7 +194,7 @@ func (c *Client) Turnout(ctx context.Context, serviceKey, sgID, sgType string) (
 		q.Set("numOfRows", strconv.Itoa(apiMaxRows))
 		q.Set("pageNo", strconv.Itoa(page))
 
-		env, err := c.apiGet(ctx, voteSttusPath, q)
+		env, err := apiCall[T](c, ctx, path, q)
 		if err != nil {
 			return nil, err
 		}
@@ -106,32 +205,17 @@ func (c *Client) Turnout(ctx context.Context, serviceKey, sgID, sgType string) (
 		default:
 			return nil, fmt.Errorf("openapi %s: %s (%s)", sgID, env.Header.ResultMsg, env.Header.ResultCode)
 		}
-
-		for _, it := range env.Body.Items.Item {
-			out = append(out, TurnoutRecord{
-				SgID:       it.SgID,
-				SgTypecode: it.SgTypecode,
-				Sido:       it.SdName,
-				Gusigun:    it.WiwName,
-				Electorate: it.TotSunsu,
-				Votes:      it.TotTusu,
-				Turnout:    it.Turnout,
-				PsSunsu:    it.PsSunsu,
-				PsEtcSunsu: it.PsEtcSunsu,
-				PsTusu:     it.PsTusu,
-				PsEtcTusu:  it.PsEtcTusu,
-			})
-		}
+		out = append(out, env.Body.Items.Item...)
 		if len(out) >= env.Body.TotalCount || len(env.Body.Items.Item) == 0 {
 			return out, nil
 		}
 	}
 }
 
-// apiGet performs a throttled GET against the OpenAPI gateway and decodes the
-// XML envelope. It uses a distinct base host (apis.data.go.kr) from the
+// apiCall performs a throttled GET against the OpenAPI gateway and decodes the
+// generic XML envelope. It uses a distinct base host (apis.data.go.kr) from the
 // file-dataset backends, overridable via WithAPIBaseURL for tests.
-func (c *Client) apiGet(ctx context.Context, path string, q url.Values) (*apiEnvelope, error) {
+func apiCall[T any](c *Client, ctx context.Context, path string, q url.Values) (*apiEnvelope[T], error) {
 	c.throttle()
 
 	u := c.apiBaseURL + path + "?" + q.Encode()
@@ -155,7 +239,7 @@ func (c *Client) apiGet(ctx context.Context, path string, q url.Values) (*apiEnv
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("openapi GET %s: status %s", path, resp.Status)
 	}
-	var env apiEnvelope
+	var env apiEnvelope[T]
 	if err := xml.Unmarshal(body, &env); err != nil {
 		return nil, fmt.Errorf("openapi parse %s: %w", path, err)
 	}

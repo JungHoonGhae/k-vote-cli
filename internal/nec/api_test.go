@@ -78,6 +78,38 @@ func TestTurnout(t *testing.T) {
 	}
 }
 
+func TestWinners(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/api_winners.xml")
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		if r.URL.Query().Get("pageNo") == "1" {
+			w.Write(fixture)
+			return
+		}
+		w.Write([]byte(emptyEnvelope))
+	}))
+	defer srv.Close()
+	c := New(WithAPIBaseURL(srv.URL), WithDelay(0), WithHTTPClient(&http.Client{Timeout: 5 * time.Second}))
+
+	recs, err := c.Winners(context.Background(), "k", "20250603", "1")
+	if err != nil {
+		t.Fatalf("Winners: %v", err)
+	}
+	if len(recs) == 0 {
+		t.Fatal("no winners parsed")
+	}
+	w := recs[0]
+	if w.Name == "" || w.Party == "" {
+		t.Errorf("name/party empty: %+v", w)
+	}
+	if w.Votes <= 0 || w.VoteRate <= 0 {
+		t.Errorf("votes/voteRate not parsed: votes=%d rate=%v", w.Votes, w.VoteRate)
+	}
+}
+
 func TestTurnoutNoData(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<?xml version="1.0"?><response><header>` +

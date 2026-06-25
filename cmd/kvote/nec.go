@@ -27,7 +27,7 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd())
 	return c
 }
 
@@ -85,6 +85,50 @@ data.go.kr OpenAPI(VoteXmntckInfoInqireService2)에서 받아옵니다. 파일 �
 				return nil
 			}
 			return renderTurnout(cmd, format, recs)
+		},
+	}
+	c.Flags().StringVar(&sgType, "sgtype", "1", "선거종류코드: 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원")
+	c.Flags().StringVar(&apiKey, "api-key", "", "data.go.kr 인증키 (기본: 환경변수 KVOTE_DATAGOKR_KEY)")
+	return c
+}
+
+// necWinnersCmd queries the data.go.kr OpenAPI for elected winners (당선인).
+func necWinnersCmd() *cobra.Command {
+	var sgType, apiKey string
+	c := &cobra.Command{
+		Use:   "winners <sgId>",
+		Short: "당선인 (선거구별) — data.go.kr OpenAPI (인증키 필요)",
+		Long: `선거ID(sgId, 선거일 YYYYMMDD)와 선거종류코드(--sgtype)로 당선인을
+data.go.kr OpenAPI(WinnerInfoInqireService2)에서 받아옵니다. 선거구·기호·정당·
+이름·득표수·득표율 등을 구조화해 제공합니다.
+
+선거종류코드(--sgtype): 1=대통령 2=국회의원 3=시도지사 4=구시군장
+                         5=시도의원 6=구시군의원
+
+인증키: 환경변수 KVOTE_DATAGOKR_KEY 또는 --api-key. 키는 로그에 남기지 않습니다.
+
+예) kvote nec winners 20250603 --sgtype 1     # 제21대 대선 당선인
+    kvote nec winners 20240410 --sgtype 2     # 제22대 총선 당선인`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			key, err := resolveAPIKey(apiKey)
+			if err != nil {
+				return err
+			}
+			recs, err := newNECClient().Winners(context.Background(), key, args[0], sgType)
+			if err != nil {
+				return err
+			}
+			if len(recs) == 0 {
+				fmt.Fprintf(cmd.ErrOrStderr(), "sgId=%s sgtype=%s 에 대한 당선인 데이터가 없습니다 "+
+					"(아직 미발행이거나 선거종류코드를 확인하세요).\n", args[0], sgType)
+				return nil
+			}
+			return renderWinners(cmd, format, recs)
 		},
 	}
 	c.Flags().StringVar(&sgType, "sgtype", "1", "선거종류코드: 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원")
@@ -443,6 +487,29 @@ func renderTurnout(cmd *cobra.Command, format output.Format, recs []nec.TurnoutR
 			rows = append(rows, []string{
 				r.Sido, r.Gusigun, fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes),
 				fmt.Sprintf("%.1f", r.Turnout),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+func renderWinners(cmd *cobra.Command, format output.Format, recs []nec.WinnerRecord) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"시도", "선거구", "기호", "정당", "이름", "득표수", "득표율(%)"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{
+				r.Sido, r.Sgg, r.Giho, r.Party, r.Name,
+				fmt.Sprint(r.Votes), fmt.Sprintf("%.2f", r.VoteRate),
 			})
 		}
 		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
