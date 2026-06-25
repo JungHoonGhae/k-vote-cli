@@ -28,7 +28,37 @@ kvote 가 그 브라우저를 살려두고 Chrome DevTools Protocol 로 다시 �
 이후 명령들을 처리합니다 — 키체인 묻지 않음, 재로그인 없음.`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(apiLoginCmd(), apiListCmd(), apiApplyCmd(), apiLogoutCmd())
+	c.AddCommand(apiLoginCmd(), apiListCmd(), apiApplyCmd(), apiConfigCmd(), apiLogoutCmd())
+	return c
+}
+
+func apiConfigCmd() *cobra.Command {
+	var autoApply bool
+	c := &cobra.Command{
+		Use:   "config",
+		Short: "설정 보기/변경 (--auto-apply 로 동의 없이 바로 신청)",
+		Long: `data.go.kr 연동 설정을 보거나 변경합니다.
+
+  --auto-apply true   ` + "`api apply`" + ` 가 확인 프롬프트 없이 바로 제출 (기본 false)
+
+인자 없이 실행하면 현재 설정을 보여줍니다. 기본값은 확인 필요(false) —
+신청은 계정에 실제 신청을 생성하므로 자동제출은 명시적으로 켜세요.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := datagokr.LoadConfig()
+			if err != nil {
+				return err
+			}
+			if cmd.Flags().Changed("auto-apply") {
+				cfg.AutoApply = autoApply
+				if err := cfg.Save(); err != nil {
+					return err
+				}
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "auto-apply = %v  (true=확인 없이 바로 신청 제출)\n", cfg.AutoApply)
+			return nil
+		},
+	}
+	c.Flags().BoolVar(&autoApply, "auto-apply", false, "동의 없이 바로 신청 제출")
 	return c
 }
 
@@ -54,8 +84,9 @@ func apiApplyCmd() *cobra.Command {
 				return err
 			}
 			cat := mapCategory(category)
+			cfg, _ := datagokr.LoadConfig()
 			confirm := func(s datagokr.ApplySummary) bool {
-				if yes {
+				if yes || (cfg != nil && cfg.AutoApply) {
 					return true
 				}
 				fmt.Fprintf(cmd.ErrOrStderr(), "\n다음 내용으로 활용신청을 제출합니다:\n")

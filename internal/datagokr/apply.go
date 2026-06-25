@@ -168,29 +168,51 @@ func Apply(ctx context.Context, pk, purpose, category string, confirm func(Apply
 		return &ApplyResult{Submitted: false, Message: "사용자가 취소함 (제출 안 함)"}, nil
 	}
 
-	// 제출: 폼의 fn_save() 가 검증 + POST.
+	// 제출: 폼의 fn_save() 가 검증 → confirm("신청하시겠습니까?") → AJAX POST.
+	// confirm/완료 알림은 위 dialog 리스너가 모두 수락한다.
 	if err := chromedp.Run(tctx, chromedp.Evaluate(`(function(){ try{ fn_save(); return 'ok'; }catch(e){ return ''+e; } })()`, nil)); err != nil {
 		return nil, fmt.Errorf("제출 호출 실패: %w", err)
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(4 * time.Second) // confirm 수락 + POST + 처리 대기
 
+	// 성공 판정 = 목록(ground truth)에 반영됐는지. 폼은 AJAX 제출이라 위치로는
+	// 판별이 안 되므로 활용신청 현황을 다시 읽어 데이터명이 나타났는지 확인한다.
 	dialogMu.Lock()
 	dlg := lastDialog
 	dialogMu.Unlock()
-	var after string
-	chromedp.Run(tctx, chromedp.Location(&after))
 
-	// 검증 alert(필수값 누락 등)은 폼에 머무름. 성공은 폼을 벗어남.
-	if strings.Contains(after, "selectDevAcountRequestForm.do") {
-		msg := "제출 거부됨"
-		if dlg != "" {
-			msg += ": " + strings.ReplaceAll(dlg, "\n", " ")
+	if listHTML, _, lerr := probeListLenient(tctx); lerr == nil {
+		if apps, perr := parseApplications(listHTML); perr == nil {
+			for _, a := range apps {
+				if filled.Name != "" && strings.Contains(a.Title, strings.TrimSpace(filled.Name)) {
+					return &ApplyResult{Submitted: true, Message: "신청 완료 (자동승인): " + a.Status}, nil
+				}
+			}
 		}
-		return &ApplyResult{Submitted: false, Message: msg}, nil
 	}
-	res := &ApplyResult{Submitted: true, Message: "신청 제출됨 (자동승인)"}
-	if dlg != "" {
-		res.Message = strings.ReplaceAll(dlg, "\n", " ")
+	// 목록에 없으면 거부(검증 실패 등). dialog 메시지를 사유로.
+	msg := "제출이 반영되지 않았습니다"
+	if dlg != "" && !strings.Contains(dlg, "신청하시겠습니까") {
+		msg += ": " + strings.ReplaceAll(dlg, "\n", " ")
 	}
-	return res, nil
+	return &ApplyResult{Submitted: false, Message: msg}, nil
+}
+
+// probeListLenient navigates the reused tab to the 활용신청 현황 list and returns
+// its HTML, settling past the SSO trampoline.
+func probeListLenient(tctx context.Context) (html, loc string, err error) {
+	if e := chromedp.Run(tctx, chromedp.Navigate(BaseURL+AccountListPath)); e != nil {
+		return "", "", e
+	}
+	deadline := time.Now().Add(12 * time.Second)
+	for time.Now().Before(deadline) {
+		chromedp.Run(tctx, chromedp.Location(&loc))
+		if loc != "" && !strings.Contains(loc, "/sso/profile.do") {
+			if chromedp.Run(tctx, chromedp.OuterHTML("html", &html, chromedp.ByQuery)) == nil && len(html) > 1000 {
+				return html, loc, nil
+			}
+		}
+		time.Sleep(400 * time.Millisecond)
+	}
+	return html, loc, nil
 }
