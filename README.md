@@ -33,7 +33,8 @@
 | provider | 사이트 | 내용 | 상태 |
 |---|---|---|---|
 | `nesdc` | 중앙선거여론조사심의위원회 (nesdc.go.kr) | 여론조사 결과·조사기관 현황 | ✅ |
-| `nec` | 중앙선거관리위원회 → data.go.kr | 개표결과·투표율 등 공개 파일 데이터 | ✅ |
+| `nec` | 중앙선거관리위원회 → data.go.kr | 개표결과(파일) + 투표율·당선인(OpenAPI) | ✅ |
+| `api` | data.go.kr 계정 | OpenAPI 활용신청·인증키·만료 자동 관리 | ✅ |
 
 `nesdc.go.kr` 은 공식 API 가 없어 스크래핑이 유일한 프로그램적 접근입니다.
 `nec` 는 선거통계시스템(info.nec.go.kr)이 robots.txt 로 전면 크롤링을 금지하므로 **직접
@@ -42,7 +43,11 @@
 
 ## 기능 — 무엇을 할 수 있나
 
-### 명령어 (전부 키 없이, 출력 `-f json|jsonl|table`)
+### 명령어 (출력 `-f json|jsonl|table`)
+
+> 대부분 **키 없이** 동작합니다. OpenAPI 기반 `nec turnout`·`nec winners` 만 data.go.kr
+> 인증키가 필요하지만 **자동승인 활용신청**이라, `kvote api` 로 로그인·신청·키 관리까지
+> 자동화됩니다(아래 `api` 표).
 
 #### `nesdc` — 여론조사 (중앙선거여론조사심의위원회)
 
@@ -57,16 +62,39 @@
 | `nesdc elections` | 선거구분 코드(`--gubun` 값) 실시간 조회 | — |
 | `nesdc agencies` | 조사기관 등록현황 | `--cancelled` 취소현황 |
 
-#### `nec` — 개표결과 (중앙선거관리위원회, 키 불필요)
+#### `nec` — 개표결과·투표율·당선인 (중앙선거관리위원회)
 
-소스 2개: `--source datagokr`(기본, data.go.kr) · `--source openportal`(data.nec.go.kr 개방포털
-— robots 허용, 대선 XLSX 직접 + 투표율·당선인·후보자).
+파일 데이터(개표결과)는 **키 불필요**. 소스 2개: `--source datagokr`(기본, data.go.kr) ·
+`--source openportal`(data.nec.go.kr 개방포털 — robots 허용, 대선 XLSX 직접 + 투표율·당선인·후보자).
 
 | 명령 | 하는 일 | 핵심 옵션 |
 |---|---|---|
 | `nec datasets` | 선관위 공개 파일 데이터 검색 (개표결과 등) | `-q` 검색어 · `--source datagokr\|openportal` |
+| `nec latest <키워드>` | 선거종류 최신 회차 데이터셋 자동 해석 (제N회/제N대 파싱) | — |
 | `nec pull <pk\|dataId>` | 개표결과 원본 다운로드 (CSV/XLSX 자동) | `-o` 저장 위치 · `--source`(개방포털은 dataId) |
 | `nec results <pk>` | 개표결과를 **투표구별로 정규화** (CSV=총선·대선, XLSX=지방선거 멀티시트) | `--file` 로컬 파싱 · `--aggregate {town\|sgg\|sido\|national}` 다단계 집계 · `--by-votetype` 투표유형 분리 · `--race`/`--leaf-only`(XLSX) |
+
+**OpenAPI 기반** (인증키 필요 — `kvote api` 로 자동 발급). `<sgId>`=선거일 `YYYYMMDD`,
+`--sgtype` 1=대통령 2=국회의원 3=시도지사 4=구시군장 5=시도의원 6=구시군의원:
+
+| 명령 | 하는 일 | 핵심 옵션 |
+|---|---|---|
+| `nec turnout <sgId>` | 투표율 (시도/구시군별) — 본투표/사전 분리 포함 | `--sgtype` · `--api-key`(기본 `KVOTE_DATAGOKR_KEY`) |
+| `nec winners <sgId>` | 당선인 (선거구·기호·정당·이름·득표수·득표율) | `--sgtype` · `--api-key` |
+
+#### `api` — data.go.kr 계정 연동 (OpenAPI 활용신청 자동화)
+
+CAPTCHA·소셜 로그인이라 완전 자동화는 불가. `api login` 으로 브라우저에서 **한 번 로그인**하면
+kvote 가 그 세션을 살려두고 Chrome DevTools Protocol 로 다시 붙어 이후 명령을 처리합니다
+(키체인 안 묻고, 재로그인 없음).
+
+| 명령 | 하는 일 | 핵심 옵션 |
+|---|---|---|
+| `api login` | 브라우저로 로그인 → 세션 유지 (1회) | — |
+| `api list` | 내 활용신청 현황 (상태·신청일·**만료예정일**) | — |
+| `api apply <pk>` | 자동승인 OpenAPI 활용신청 (목적 필수·제출 전 확인) | `--purpose`(필수) · `--category research\|web\|app\|ref\|etc` · `--yes` |
+| `api config` | 설정 보기/변경 | `--auto-apply true`(확인 없이 바로 신청) |
+| `api logout` | 세션 종료 | — |
 
 ### 정규화가 주는 것 (중립 파라미터)
 
@@ -165,6 +193,14 @@ kvote nec results --file ./downloads/*.xlsx --race 교육감 --leaf-only -f json
 # 개방포털(data.nec.go.kr) — robots 허용·키리스, 대선 XLSX 직접 + 투표율·당선인·후보자
 kvote nec datasets -q 대통령선거 --source openportal -f table   # dataId 카탈로그
 kvote nec pull 8 --source openportal -o ./downloads            # 제18~21대 대선 개표결과 XLSX
+
+# --- data.go.kr OpenAPI: 인증키 발급부터 호출까지 ---
+kvote api login                                  # 브라우저 1회 로그인 (세션 유지)
+kvote api apply 15000900 --purpose "선거 데이터 분석 연구"   # 투·개표 OpenAPI 활용신청(자동승인)
+kvote api list -f table                          # 내 활용신청 현황 + 만료예정일
+export KVOTE_DATAGOKR_KEY=<일반 인증키>          # 마이페이지 인증키 (계정당 1개)
+kvote nec turnout 20250603 --sgtype 1 -f table   # 제21대 대선 투표율 (시도/구시군별)
+kvote nec winners 20240410 --sgtype 2 -f jsonl   # 제22대 총선 당선인 254명
 ```
 
 ### 필터 (results 게시판)
