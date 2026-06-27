@@ -24,9 +24,9 @@
 </p>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/docs/k-vote-cli-promo.mp4" poster="docs/promo-poster.png" controls muted width="760"></video>
+  <a href="docs/k-vote-cli-promo.mp4"><img src="docs/k-vote-cli-promo.gif" alt="k-vote-cli 홍보 — 개표결과도, 이번주 여론조사도 한 명령으로" width="760" /></a>
 </p>
-<p align="center"><sub>▶ 재생이 안 되면 <a href="docs/k-vote-cli-promo.mp4">홍보 영상</a> · <a href="docs/k-vote-cli.gif">터미널 데모(GIF)</a></sub></p>
+<p align="center"><sub>▶ <a href="docs/k-vote-cli-promo.mp4">HD 영상</a> · <a href="docs/k-vote-cli.gif">터미널 데모</a></sub></p>
 
 > [!WARNING]
 > 비공식 도구입니다. 공개 포털의 HTML 구조에 의존하므로 사이트 개편 시 동작이 깨질 수 있습니다.

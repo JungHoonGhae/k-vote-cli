@@ -24,9 +24,9 @@
 </p>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/docs/k-vote-cli-promo.mp4" poster="docs/promo-poster.png" controls muted width="760"></video>
+  <a href="docs/k-vote-cli-promo.mp4"><img src="docs/k-vote-cli-promo.gif" alt="k-vote-cli promo — vote counts and this week's polls in one command" width="760" /></a>
 </p>
-<p align="center"><sub>▶ If it doesn't play: <a href="docs/k-vote-cli-promo.mp4">promo video</a> · <a href="docs/k-vote-cli.gif">terminal demo (GIF)</a></sub></p>
+<p align="center"><sub>▶ <a href="docs/k-vote-cli-promo.mp4">HD video</a> · <a href="docs/k-vote-cli.gif">terminal demo</a></sub></p>
 
 > [!WARNING]
 > Unofficial tool. It depends on the public portals' HTML structure, so a site redesign may break it.
