@@ -80,7 +80,7 @@ def main() -> None:
         old.unlink()
 
     badge("license.svg", "License", "MIT")
-    badge("keyless.svg", "Core", "Keyless")
+    badge("keyless-core.svg", "Core", "Keyless")
     badge("go.svg", "Built with", "Go 1.25+")
     badge("agents.svg", "Works with", "Claude · Codex · jq")
     badge("output.svg", "Output", "JSON · JSONL · Table")

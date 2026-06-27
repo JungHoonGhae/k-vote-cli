@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="docs/badges/license.svg" height="44" alt="MIT License" /></a>
-  &nbsp;<img src="docs/badges/keyless.svg" height="44" alt="keyless core" />
+  &nbsp;<img src="docs/badges/keyless-core.svg" height="44" alt="keyless core" />
   &nbsp;<img src="docs/badges/go.svg" height="44" alt="Built with Go" />
   &nbsp;<img src="docs/badges/agents.svg" height="44" alt="Works with Claude · Codex · jq · duckdb" />
   &nbsp;<img src="docs/badges/output.svg" height="44" alt="Output: json · jsonl · table" />
