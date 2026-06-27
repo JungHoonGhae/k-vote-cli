@@ -2,9 +2,9 @@
 
 <div align="center">
   <h1>k-vote-cli</h1>
-  <p><strong>Korean election public data (vote counts & opinion polls) — no API key, one command, structured JSON.</strong></p>
-  <p>Claude Code · Codex · Cursor · bash · jq · duckdb — same command (<code>kvote</code>) for an AI agent or a human. It absorbs the messy CSV/XLSX, robots blocks, encoding, and API-application steps for you.</p>
-  <p><sub>One-command <strong>concurrent download + per-precinct normalization</strong> of the core election results · full opinion-poll collection · turnout & winners OpenAPI · data.go.kr access-application automation — <a href="#features">full feature table ↓</a></sub></p>
+  <p><strong>Election results anyone can pull for themselves — Korea's public election data in one command.</strong></p>
+  <p>Vote counts & opinion polls, with no special access or sign-up. A human or an AI gets them with the same command (<code>kvote</code>) and reads them right away.</p>
+  <p><sub><strong>Download the core historical results at once + tidy them per precinct</strong> · full opinion-poll collection · turnout & winners · automatic API-key issuance — <a href="#features">full feature table ↓</a></sub></p>
 </div>
 
 <p align="center">
