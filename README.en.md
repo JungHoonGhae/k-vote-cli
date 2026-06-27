@@ -2,9 +2,9 @@
 
 <div align="center">
   <h1>k-vote-cli</h1>
-  <p><strong>Past results or this week's polls — anyone pulls Korea's election data in one command.</strong></p>
+  <p><strong>Past results, or this week's polls. Anyone pulls Korea's election data in one command.</strong></p>
   <p>Vote counts and opinion polls, with no special access or sign-up. A human or an AI gets them with the same command (<code>kvote</code>) and reads them right away.</p>
-  <p><sub><strong>Historical results tidied per precinct</strong> · <strong>this week's polls collected in full</strong> · party-support time series · turnout & winners — in one command. <a href="#features">full feature table ↓</a></sub></p>
+  <p><sub><strong>Historical results tidied per precinct</strong>, <strong>this week's polls collected in full</strong>, party-support time series, all in one command. <a href="#features">full feature table ↓</a></sub></p>
 </div>
 
 <p align="center">
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/k-vote-cli-promo.mp4"><img src="docs/k-vote-cli-promo.gif" alt="k-vote-cli promo — vote counts and this week's polls in one command" width="760" /></a>
+  <a href="docs/k-vote-cli-promo.mp4"><img src="docs/k-vote-cli-promo.gif" alt="k-vote-cli promo: vote counts and this week's polls in one command" width="760" /></a>
 </p>
 <p align="center"><sub>▶ <a href="docs/k-vote-cli-promo.mp4">HD video</a> · <a href="docs/k-vote-cli.gif">terminal demo</a></sub></p>
 
@@ -35,12 +35,13 @@
 
 ## Why
 
-Whether you want to check past election results yourself or see how this week's polls are moving,
-actually getting that data is hard. It's "public," sure — but **you can't find where to download it,
-the file won't open when you do, and in the end you give up unless you're a developer.**
+You want to check an election result for yourself, or see how this week's polls came out.
+It's "public," they say. But the moment you try to actually get it, the road is blocked. The site shuts
+out automated access, and the file you finally pull down is **garbled or won't open.** Most people give
+up unless they're developers.
 
-`k-vote-cli` cuts that down to **one command**. It pulls Korea's scattered election data — **vote
-counts and opinion polls** — into a form anyone, and any AI, can use right away. No special access, no sign-up.
+`k-vote-cli` closes that gap. It pulls Korea's scattered **vote counts and opinion polls** into a form
+anyone, and any AI, can use right away. No sign-up, no special access.
 
 <details>
 <summary>What was technically in the way</summary>
@@ -53,8 +54,7 @@ k-vote-cli absorbs all of it.
 </details>
 
 > **Neutrality.** k-vote-cli keeps the raw data as-is and only adds standard, clearly-defined values
-> (turnout, vote share, totals). It makes **no judgment** about what is normal or abnormal — analysis and
-> interpretation are up to whoever receives the data (human or AI).
+> (turnout, vote share, totals). What the data means is for you to decide.
 
 ## Before → After
 
@@ -72,20 +72,20 @@ k-vote-cli absorbs all of it.
 
 | Group | Capability | Command | Key |
 |---|---|---|:--:|
-| **⭐ Core** | Concurrent download + per-precinct normalization of core historical results | `nec corpus --normalize` | — |
-| Results | Normalize results per precinct (aggregation, early/election-day split) | `nec results <pk>` | — |
-| Results | Search public datasets (vote counts, etc.) | `nec datasets -q <query>` | — |
-| Results | Auto-resolve the latest edition of an election type | `nec latest <keyword>` | — |
-| Results | Download the original file (CSV/XLSX, auto-detected) | `nec pull <pk>` | — |
-| Polls | Collect an entire range/condition as JSONL | `nesdc sync` | — |
-| Polls | Cumulative master workbook → party support (2023-10-30~, 1,400+ records) | `nesdc bulk` | — |
-| Polls | Single-record metadata + sample-composition crosstab | `nesdc show <nttId> --crosstab` | — |
-| Polls | Download attached PDFs (tables/questionnaires) | `nesdc pull <nttId>` | — |
-| Health | Live check of the killer paths (detects site-redesign breakage) | `doctor` | — |
+| **⭐ Core** | Concurrent download + per-precinct normalization of core historical results | `nec corpus --normalize` | - |
+| Results | Normalize results per precinct (aggregation, early/election-day split) | `nec results <pk>` | - |
+| Results | Search public datasets (vote counts, etc.) | `nec datasets -q <query>` | - |
+| Results | Auto-resolve the latest edition of an election type | `nec latest <keyword>` | - |
+| Results | Download the original file (CSV/XLSX, auto-detected) | `nec pull <pk>` | - |
+| Polls | Collect an entire range/condition as JSONL | `nesdc sync` | - |
+| Polls | Cumulative master workbook → party support (2023-10-30~, 1,400+ records) | `nesdc bulk` | - |
+| Polls | Single-record metadata + sample-composition crosstab | `nesdc show <nttId> --crosstab` | - |
+| Polls | Download attached PDFs (tables/questionnaires) | `nesdc pull <nttId>` | - |
+| Health | Live check of the killer paths (detects site-redesign breakage) | `doctor` | - |
 | 🧪 OpenAPI | Turnout (by province / district, early vs. election-day) | `nec turnout <sgId> --sgtype N` | 🔑 |
 | 🧪 OpenAPI | Winners (district · ballot no. · party · name · votes) | `nec winners <sgId> --sgtype N` | 🔑 |
 | 🧪 OpenAPI | Election-code registry (every sgId / type since 1987) | `nec elections` | 🔑 |
-| 🧪 Account | One-time browser login → keep the session alive | `api login` | — |
+| 🧪 Account | One-time browser login → keep the session alive | `api login` | - |
 | 🧪 Account | My access applications (status · **expiry date**) | `api list` | 🔑 |
 | 🧪 Account | Auto-submit an OpenAPI access application (purpose required, confirm) | `api apply <pk> --purpose` | 🔑 |
 
@@ -104,25 +104,25 @@ k-vote-cli absorbs all of it.
 
 </details>
 
-### `nec corpus` — the killer feature
+### `nec corpus` (the killer)
 
-One line — `nec corpus --normalize` — concurrently downloads the core historical results (presidential 16th/17th/21st ·
-parliamentary + proportional · local 5th–8th) and normalizes each to per-precinct JSONL on the spot. "Download + prep"
-in a single command.
+`nec corpus --normalize` concurrently downloads the core historical results (presidential 16th/17th/21st,
+parliamentary + proportional, local 5th-8th) and normalizes each to per-precinct JSONL on the spot. Ready to
+read the moment it lands.
 
 ```bash
 kvote nec corpus --normalize -o ./corpus
 duckdb -c "SELECT * FROM read_json_auto('./corpus/*.jsonl') LIMIT 5"
 ```
 
-### What normalization gives you (neutral parameters)
+### What normalization gives you
 
 | Dimension | Detail |
 |---|---|
-| Vote type | election-day / in-district early / out-of-district early / absentee — classified per row |
+| Vote type | per row: election-day / in-district early / out-of-district early / absentee |
 | Multi-level aggregation | precinct → town → district → province → nationwide (metrics summed + turnout) |
-| Derived values | turnout (votes/electorate) · valid votes (votes−invalid) · candidate share (votes/valid) — definitions stated |
-| Raw preserved | electorate · votes · invalid · abstention · per-candidate votes — compute any identity yourself |
+| Derived values | turnout (votes/electorate) · valid votes (votes−invalid) · candidate share (votes/valid), all defined |
+| Raw preserved | electorate · votes · invalid · abstention · per-candidate votes; compute any identity yourself |
 | Sample composition | poll gender/age/region × completed·weighted counts + weighting method |
 
 ### What you can verify
@@ -143,11 +143,9 @@ More agent-ready recipes live in `AGENTS.md`.
 
 ```bash
 go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
-# While the repo is private, git auth + GOPRIVATE are needed:
-#   GOPRIVATE=github.com/JungHoonGhae/* go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 ```
 
-**Homebrew (macOS/Linux)** — after the repo is public + tap is set up:
+**Homebrew (macOS/Linux)**
 
 ```bash
 brew install JungHoonGhae/k-vote-cli/kvote
@@ -175,15 +173,14 @@ Run `kvote doctor` first to confirm the core paths are alive.
 Vote counts need no key:
   kvote nec corpus --normalize -o ./corpus   # core historical results → per-precinct JSONL
   kvote nec results <pk> -f jsonl             # normalize a single dataset
-Take output as -f jsonl and query with jq/duckdb. k-vote-cli only provides data and
-makes no normal/abnormal judgment — interpretation is the caller's.
+Take output as -f jsonl and query with jq/duckdb.
 OpenAPI (turnout/winners) needs a key, but turnout & winners are also derivable from results.
 ```
 
 ### For Human
 
 ```bash
-# Core — historical results in one command
+# Core: historical results in one command
 kvote nec corpus --normalize -o ./corpus
 duckdb -c "SELECT * FROM read_json_auto('./corpus/*.jsonl') LIMIT 5"
 
@@ -192,12 +189,12 @@ kvote nec datasets -q 개표결과 -f table
 kvote nec results 15025527 -f jsonl > votes.jsonl     # per precinct, with candidate votes
 kvote nec results 15025527 --aggregate sgg --by-votetype -f jsonl   # district × vote type
 
-# Opinion polls — full collection
+# Opinion polls: full collection
 kvote nesdc sync --from 2026-01-01 > surveys.jsonl
 kvote nesdc show 19366 --crosstab -f table            # single record + sample composition
 kvote nesdc bulk -f jsonl > polls.jsonl               # cumulative party support
 
-# data.go.kr OpenAPI — from key issuance to call (experimental)
+# data.go.kr OpenAPI: from key issuance to call (experimental)
 kvote api login                                       # one-time browser login
 kvote api apply 15000900 --purpose "election data analysis research"
 export KVOTE_DATAGOKR_KEY=<service key>
@@ -214,13 +211,13 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl        # 22nd parliamentary winne
 | `--date-field` | range basis | `registered` (default) `published` `surveyed` |
 | `--gubun` | election segment | segment code (e.g. `VT044` 22nd presidential) |
 
-> The portal silently ignores a date range without `--date-field` — k-vote-cli auto-applies `registered` when a range is given.
+> The portal silently ignores a date range without `--date-field`. k-vote-cli auto-applies `registered` when a range is given.
 
 ### Boards (`[board]` argument)
 
 | name | content |
 |---|---|
-| `results` | poll results view (detailed metadata + PDF) — default |
+| `results` | poll results view (detailed metadata + PDF), default |
 | `data` | poll-result key data (weekly bulk) |
 | `notices` · `library` · `actions` · `violations` | notices · library · actions · violations |
 
@@ -236,25 +233,25 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl        # 22nd parliamentary winne
 |---|---|---|
 | `-f, --format` | `json` | output format |
 | `--delay` | `700ms` | minimum spacing between requests (rate limit) |
-| `--base-url` | — | override the portal base URL (testing) |
+| `--base-url` | - | override the portal base URL (testing) |
 
 ## Data sources
 
 | provider | site | content | key |
 |---|---|---|:--:|
-| `nec` | National Election Commission → data.go.kr | vote counts (files) + turnout·winners (OpenAPI) | files — / API 🔑 |
-| `nesdc` | Election Survey Deliberation Commission (nesdc.go.kr) | poll results · sample composition | — |
+| `nec` | National Election Commission → data.go.kr | vote counts (files) + turnout·winners (OpenAPI) | files none / API 🔑 |
+| `nesdc` | Election Survey Deliberation Commission (nesdc.go.kr) | poll results · sample composition | - |
 | `api` | data.go.kr account | OpenAPI access application · key · expiry | 🔑 |
 
 `nec` does **not** scrape the election-statistics site (info.nec.go.kr), which blocks all crawling via robots.txt.
-Instead it searches and downloads the **vote-count files (CSV/XLSX) the NEC publishes on data.go.kr** — its official
-distribution channel — without a key. `nesdc.go.kr` has no official API, so scraping is the only programmatic access.
+Instead it searches and downloads the **vote-count files (CSV/XLSX) the NEC publishes on data.go.kr**, its official
+distribution channel, without a key. `nesdc.go.kr` has no official API, so scraping is the only programmatic access.
 
 ## Development
 
 ```bash
 make build    # build
-make test     # tests (no network — uses testdata fixtures)
+make test     # tests (no network, uses testdata fixtures)
 make fmt      # gofmt
 go vet ./...
 ```
