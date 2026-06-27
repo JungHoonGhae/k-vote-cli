@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"syscall"
 	"time"
 )
 
@@ -142,7 +141,7 @@ func launchBrowser(startURL string) (*exec.Cmd, error) {
 		startURL,
 	}
 	cmd := exec.Command(chrome, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} // detach from kvote's group
+	setDetached(cmd) // OS별로 kvote 프로세스 그룹에서 분리 (browser 가 kvote 종료 후에도 생존)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("브라우저 실행 실패: %w", err)
 	}
