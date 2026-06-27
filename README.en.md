@@ -36,12 +36,15 @@
 ## Why
 
 You want to check an election result for yourself, or see how this week's polls came out.
-It's "public," they say. But the moment you try to actually get it, the road is blocked. The site shuts
-out automated access, and the file you finally pull down is **garbled or won't open.** Most people give
-up unless they're developers.
+It's "public," they say. But the moment you try to get it, the first wall is **where, what, and which file**
+to even download. info.nec.go.kr is blocked, data.go.kr has dozens of near-identical datasets, and the file
+you finally pull down is garbled or won't open. Polls don't even have an API, so you download a PDF per post
+and read the tables by hand. Knowing how to code doesn't make it any less daunting, and for a non-expert it's
+a wall you can't even start to climb.
 
-`k-vote-cli` closes that gap. It pulls Korea's scattered **vote counts and opinion polls** into a form
-anyone, and any AI, can use right away. No sign-up, no special access.
+`k-vote-cli` removes that. You don't need to know where, what, or which file. One command pulls vote counts
+and this week's polls alike, **finds the right source for you**, and hands it back ready to analyze. Same
+whether a person types it or an AI calls it.
 
 <details>
 <summary>What was technically in the way</summary>
