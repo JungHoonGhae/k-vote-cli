@@ -1,0 +1,26 @@
+name: Feature Request
+description: 기능을 제안합니다
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 설명
+      description: 어떤 기능이 필요한가요? (예: 특정 선거 데이터셋 추가, 새 출력 포맷)
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 배경
+      description: 왜 이 기능이 필요한가요? 어떤 데이터에 접근하기 어려웠나요?
+    validations:
+      required: false
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: 원칙 확인
+      description: kvote는 접근성 도구이며 중립을 지킵니다.
+      options:
+        - label: 이 제안은 데이터 접근성을 높이는 것이며, 분석적 판단·점수·"이상치" 표시를 요구하지 않습니다.
+          required: true

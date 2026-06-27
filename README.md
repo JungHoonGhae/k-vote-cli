@@ -266,6 +266,14 @@ go vet ./...
 
 내부 구조는 [CLAUDE.md](CLAUDE.md), 에이전트 레시피는 [AGENTS.md](AGENTS.md) 참고.
 
+## 기여
+
+이슈·PR 환영합니다. 시작 전 [CONTRIBUTING.md](CONTRIBUTING.md)의 **두 가지 타협 불가 원칙**(중립성·키리스)을 읽어 주세요.
+
+- 변경 이력: [CHANGELOG.md](CHANGELOG.md)
+- 행동 강령: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- 보안 신고: [SECURITY.md](SECURITY.md) (공개 이슈로 올리지 마세요)
+
 ## 라이선스
 
-MIT
+[MIT](LICENSE)

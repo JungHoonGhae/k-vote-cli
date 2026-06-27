@@ -261,6 +261,15 @@ go vet ./...
 
 See [CLAUDE.md](CLAUDE.md) for internals and [AGENTS.md](AGENTS.md) for agent recipes.
 
+## Contributing
+
+Issues and PRs welcome. Before you start, read the **two non-negotiable principles**
+(neutrality · keyless) in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Security: [SECURITY.md](SECURITY.md) (do not open a public issue)
+
 ## License
 
-MIT
+[MIT](LICENSE)
