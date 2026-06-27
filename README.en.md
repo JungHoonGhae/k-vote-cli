@@ -2,9 +2,9 @@
 
 <div align="center">
   <h1>k-vote-cli</h1>
-  <p><strong>Election results anyone can pull for themselves — Korea's public election data in one command.</strong></p>
-  <p>Vote counts & opinion polls, with no special access or sign-up. A human or an AI gets them with the same command (<code>kvote</code>) and reads them right away.</p>
-  <p><sub><strong>Download the core historical results at once + tidy them per precinct</strong> · full opinion-poll collection · turnout & winners · automatic API-key issuance — <a href="#features">full feature table ↓</a></sub></p>
+  <p><strong>Past results or this week's polls — anyone pulls Korea's election data in one command.</strong></p>
+  <p>Vote counts and opinion polls, with no special access or sign-up. A human or an AI gets them with the same command (<code>kvote</code>) and reads them right away.</p>
+  <p><sub><strong>Historical results tidied per precinct</strong> · <strong>this week's polls collected in full</strong> · party-support time series · turnout & winners — in one command. <a href="#features">full feature table ↓</a></sub></p>
 </div>
 
 <p align="center">
@@ -32,20 +32,28 @@
 > It only collects **legally-mandated public data** (registered/published material under election-survey rules),
 > with a default rate limit to scrape politely. Use at your own risk.
 
-## The problem it solves
+## Why
 
-Korean election results and opinion polls are public. But getting them programmatically hits walls:
+Whether you want to check past election results yourself or see how this week's polls are moving,
+actually getting that data is hard. It's "public," sure — but **you can't find where to download it,
+the file won't open when you do, and in the end you give up unless you're a developer.**
 
-- a full robots block (info.nec.go.kr), JSF portals, PDFs
-- EUC-KR encoding, a different XLSX layout per sheet, duplicated precincts
-- the access-application + API-key issuance flow on data.go.kr
+`k-vote-cli` cuts that down to **one command**. It pulls Korea's scattered election data — **vote
+counts and opinion polls** — into a form anyone, and any AI, can use right away. No special access, no sign-up.
 
-`k-vote-cli` removes that friction with **one command**. It turns scattered public data — keylessly — into a
-structured form an AI agent can query directly.
+<details>
+<summary>What was technically in the way</summary>
 
-> **Neutrality.** k-vote-cli preserves the raw data as-is and computes only standard, clearly-defined derived
-> values (turnout, vote share, aggregates). It makes **no judgment** about what is normal or abnormal —
-> analysis and interpretation are entirely up to whoever receives the data (human or AI).
+- the election-statistics site (info.nec.go.kr) blocks all automated access (robots)
+- files come in old encodings (EUC-KR), inconsistent spreadsheet layouts, duplicated precincts
+- the data.go.kr OpenAPI needs sign-up, an access application, and key issuance
+
+k-vote-cli absorbs all of it.
+</details>
+
+> **Neutrality.** k-vote-cli keeps the raw data as-is and only adds standard, clearly-defined values
+> (turnout, vote share, totals). It makes **no judgment** about what is normal or abnormal — analysis and
+> interpretation are up to whoever receives the data (human or AI).
 
 ## Before → After
 
