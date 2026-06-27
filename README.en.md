@@ -24,8 +24,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/k-vote-cli.gif" alt="k-vote-cli demo — search results → per-precinct structured JSON → live health check" width="760" />
+  <video src="https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/docs/k-vote-cli-promo.mp4" poster="docs/promo-poster.png" controls muted width="760"></video>
 </p>
+<p align="center"><sub>▶ If it doesn't play: <a href="docs/k-vote-cli-promo.mp4">promo video</a> · <a href="docs/k-vote-cli.gif">terminal demo (GIF)</a></sub></p>
 
 > [!WARNING]
 > Unofficial tool. It depends on the public portals' HTML structure, so a site redesign may break it.
