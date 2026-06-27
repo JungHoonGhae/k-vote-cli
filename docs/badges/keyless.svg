@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="186" height="46" viewBox="0 0 186 46" role="img" aria-label="CORE: keyless">
+  <rect x="0.5" y="0.5" width="185" height="45" rx="9" fill="#0b0b0e" stroke="#ffffff1f"/>
+  <line x1="66.0" y1="11" x2="66.0" y2="35" stroke="#ffffff1c" stroke-width="1"/>
+  <text x="17.0" y="23.0" fill="#8b8d98" font-family="'DejaVu Sans Mono','Courier New',ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12.5" font-weight="600" letter-spacing="1.2" dominant-baseline="central">CORE</text>
+  <circle cx="85.0" cy="23.0" r="4" fill="#34d399"/>
+  <text x="96.0" y="23.0" fill="#34d399" font-family="'DejaVu Sans Mono','Courier New',ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" font-weight="700" dominant-baseline="central">keyless</text>
+</svg>

@@ -8,11 +8,11 @@
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/commands-19%20across%204%20groups-blue" alt="commands" />
-  <img src="https://img.shields.io/badge/core-keyless-success" alt="keyless core" />
-  <img src="https://img.shields.io/badge/output-json%20%7C%20jsonl%20%7C%20table-informational" alt="output formats" />
-  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8.svg" alt="Go" />
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT" /></a>
+  <a href="LICENSE"><img src="docs/badges/license.svg" height="44" alt="MIT License" /></a>
+  &nbsp;<img src="docs/badges/keyless.svg" height="44" alt="keyless core" />
+  &nbsp;<img src="docs/badges/go.svg" height="44" alt="Built with Go" />
+  &nbsp;<img src="docs/badges/agents.svg" height="44" alt="Works with Claude · Codex · jq · duckdb" />
+  &nbsp;<img src="docs/badges/output.svg" height="44" alt="Output: json · jsonl · table" />
 </p>
 
 <p align="center">
