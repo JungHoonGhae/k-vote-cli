@@ -1,3 +1,5 @@
+<p align="right"><strong>한국어</strong> · <a href="README.en.md">English</a></p>
+
 <div align="center">
   <h1>k-vote-cli</h1>
   <p><strong>한국 선거 공개 데이터(개표결과·여론조사)를 API 키 없이, 한 명령으로, 구조화된 JSON으로.</strong></p>
