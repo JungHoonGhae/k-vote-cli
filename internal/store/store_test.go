@@ -112,3 +112,38 @@ func TestIngestPollsIdempotent(t *testing.T) {
 		t.Errorf("재적재 후 중복: polls=%d party_support=%d (want 1/2)", ps, pp)
 	}
 }
+
+func TestQueryReadsAndTruncates(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "k.db")
+	db, _ := Open(p)
+	db.IngestResults(DatasetMeta{Source: "nec", PublicDataPk: "1"}, sampleResults())
+	db.Close()
+
+	ro, err := OpenReadOnly(p)
+	if err != nil {
+		t.Fatalf("OpenReadOnly: %v", err)
+	}
+	defer ro.Close()
+
+	qr, err := ro.Query("SELECT sido, votes FROM results ORDER BY id", 1)
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if len(qr.Columns) != 2 || qr.Columns[0] != "sido" {
+		t.Errorf("columns = %v", qr.Columns)
+	}
+	if len(qr.Rows) != 1 || !qr.Truncated {
+		t.Errorf("rows=%d truncated=%v (want 1 / true)", len(qr.Rows), qr.Truncated)
+	}
+}
+
+func TestQueryRejectsWrite(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "k.db")
+	db, _ := Open(p)
+	db.Close()
+	ro, _ := OpenReadOnly(p)
+	defer ro.Close()
+	if _, err := ro.Query("INSERT INTO datasets(source, ingested_at) VALUES('x','y')", 10); err == nil {
+		t.Fatal("expected write SQL to be rejected on read-only DB")
+	}
+}
