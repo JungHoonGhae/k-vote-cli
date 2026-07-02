@@ -149,38 +149,87 @@ func TestQueryRejectsWrite(t *testing.T) {
 }
 
 // v_agg_sgg 뷰와 nec.Aggregate(AggSgg) 는 같은 정의의 두 구현이다. 같은 픽스처에서
-// 지표·투표율이 일치해야 정의 드리프트가 없다.
+// 파생값(valid_votes·turnout) 까지 정확히 일치해야 정의 드리프트가 없다 — raw sum 만
+// 비교하면 두 구현이 서로 다른 파생 공식을 써도 통과해버리는 구멍이 있었다(hollow test).
 func TestViewMatchesAggregate(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "k.db")
 	db, _ := Open(p)
 	recs := sampleResults()
+	// 두 번째 그룹: 완전히 별개 선거구(강남구)를 electorate=0 인 투표구로만 구성해
+	// v_agg_sgg 의 "electorate=0 → turnout NULL" 가드와 nec.Aggregate 의
+	// "electorate=0 → turnout 0.0" 를 같은 시나리오에서 맞대어 검증한다
+	// (관외사전투표처럼 electorate 를 별도 집계하지 않는 투표구 유형을 흉내).
+	recs = append(recs, nec.ResultRecord{
+		Sido: "서울", District: "강남구", Town: "관외사전투표", Booth: "관외사전투표", VoteType: "관외사전",
+		Electorate: 0, Votes: 15, Invalid: 2, Abstention: 0,
+		Candidates: []nec.CandidateVote{{Party: "A당", Name: "김", Votes: 9}, {Party: "B당", Name: "이", Votes: 4}},
+	})
 	db.IngestResults(DatasetMeta{Source: "nec", PublicDataPk: "1"}, recs)
 	db.Close()
 
-	// Go 경로: 선거구 집계 (by-votetype=false → vote_type 합쳐짐).
+	// Go 경로: 선거구 집계 (by-votetype=false → vote_type 합쳐짐). newAgg 의 그룹 정의가
+	// aggregate.go 의 유일한 정의 소스이므로, 여기서 다시 계산하지 않고 그 출력을 그대로 쓴다.
 	aggs := nec.Aggregate(recs, nec.AggSgg, false)
-	want := map[string][3]int{} // key = sido|sgg → {electorate, votes, invalid}
+	type want struct {
+		electorate, votes, invalid, validVotes int
+		turnout                                float64
+	}
+	wantByKey := map[string]want{}
 	for _, a := range aggs {
-		want[a.Sido+"|"+a.District] = [3]int{a.Electorate, a.Votes, a.Invalid}
+		wantByKey[a.Sido+"|"+a.District] = want{
+			electorate: a.Electorate, votes: a.Votes, invalid: a.Invalid,
+			validVotes: a.ValidVotes, turnout: a.Turnout,
+		}
 	}
 
 	// SQL 경로: v_agg_sgg 는 vote_type 별이므로 sido,sgg 로 다시 합산해 비교.
+	// turnout 은 v_agg_sgg 안에서 이미 vote_type 별로 계산돼있어 그대로 합산할 수 없으므로
+	// (분모가 vote_type 마다 다름) SUM(votes)/SUM(electorate) 로 sgg 단위 재계산한다 —
+	// 이것이 aggregate.go 의 Turnout = Votes/Electorate 정의와 동일한 식이다.
 	ro, _ := OpenReadOnly(p)
 	defer ro.Close()
 	qr, err := ro.Query(
-		`SELECT sido, sgg, SUM(electorate), SUM(votes), SUM(invalid)
+		`SELECT sido, sgg,
+		        SUM(electorate) AS electorate,
+		        SUM(votes) AS votes,
+		        SUM(invalid) AS invalid,
+		        SUM(votes) - SUM(invalid) AS valid_votes,
+		        CASE WHEN SUM(electorate) > 0
+		             THEN CAST(SUM(votes) AS REAL) / SUM(electorate) END AS turnout
 		 FROM v_agg_sgg GROUP BY sido, sgg ORDER BY sido, sgg`, 100)
 	if err != nil {
 		t.Fatalf("Query: %v", err)
 	}
-	if len(qr.Rows) != len(want) {
-		t.Fatalf("행수 불일치: sql=%d go=%d", len(qr.Rows), len(want))
+	if len(qr.Rows) != len(wantByKey) {
+		t.Fatalf("행수 불일치: sql=%d go=%d", len(qr.Rows), len(wantByKey))
 	}
+	const epsilon = 1e-9
 	for _, row := range qr.Rows {
 		key := toStr(row[0]) + "|" + toStr(row[1])
-		got := [3]int{toInt(row[2]), toInt(row[3]), toInt(row[4])}
-		if got != want[key] {
-			t.Errorf("%s: sql=%v go=%v", key, got, want[key])
+		w, ok := wantByKey[key]
+		if !ok {
+			t.Errorf("%s: sql 에만 존재, go 집계에 없음", key)
+			continue
+		}
+		gotElectorate, gotVotes, gotInvalid, gotValid := toInt(row[2]), toInt(row[3]), toInt(row[4]), toInt(row[5])
+		if gotElectorate != w.electorate || gotVotes != w.votes || gotInvalid != w.invalid {
+			t.Errorf("%s: raw sql=(elec=%d votes=%d invalid=%d) go=(elec=%d votes=%d invalid=%d)",
+				key, gotElectorate, gotVotes, gotInvalid, w.electorate, w.votes, w.invalid)
+		}
+		if gotValid != w.validVotes {
+			t.Errorf("%s: valid_votes sql=%d go=%d", key, gotValid, w.validVotes)
+		}
+		// turnout: electorate=0 이면 SQL 은 NULL(→Query 가 nil 반환), Go 는 0.0 —
+		// 둘 다 "계산 불가/0" 을 뜻하는 같은 의미이므로 NULL→0 로 정규화해 비교한다.
+		gotTurnout := 0.0
+		if row[6] != nil {
+			gotTurnout = toFloat(row[6])
+		}
+		if diff := gotTurnout - w.turnout; diff < -epsilon || diff > epsilon {
+			t.Errorf("%s: turnout sql=%v go=%v (electorate=%d)", key, gotTurnout, w.turnout, w.electorate)
+		}
+		if w.electorate == 0 && (gotTurnout != 0 || w.turnout != 0) {
+			t.Errorf("%s: electorate=0 가드 실패 — sql=%v go=%v (둘 다 0 이어야 함)", key, gotTurnout, w.turnout)
 		}
 	}
 }
@@ -192,6 +241,15 @@ func toInt(v any) int {
 		return int(n)
 	case int:
 		return n
+	}
+	return 0
+}
+func toFloat(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int64:
+		return float64(n)
 	}
 	return 0
 }

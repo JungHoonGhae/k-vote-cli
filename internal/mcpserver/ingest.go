@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
@@ -50,7 +51,7 @@ func registerIngestTools(s *mcp.Server, deps Deps) {
 			return errResult(err.Error()), nil, nil
 		}
 		defer db.Close()
-		dsID, err := db.IngestResults(store.DatasetMeta{Source: "nec", PublicDataPk: in.PK, Name: path}, recs)
+		dsID, err := db.IngestResults(store.DatasetMeta{Source: "nec", PublicDataPk: in.PK, Name: filepath.Base(path)}, recs)
 		if err != nil {
 			return errResult(err.Error()), nil, nil
 		}
@@ -92,7 +93,7 @@ func registerIngestTools(s *mcp.Server, deps Deps) {
 			return errResult(err.Error()), nil, nil
 		}
 		defer db.Close()
-		dsID, err := db.IngestPolls(store.DatasetMeta{Source: "nesdc", PublicDataPk: "bulk-" + boardName, Name: path}, recs)
+		dsID, err := db.IngestPolls(store.DatasetMeta{Source: "nesdc", PublicDataPk: "bulk-" + boardName, Name: filepath.Base(path)}, recs)
 		if err != nil {
 			return errResult(err.Error()), nil, nil
 		}

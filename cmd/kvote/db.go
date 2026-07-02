@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
@@ -55,7 +56,7 @@ func dbIngestCmd() *cobra.Command {
 				return err
 			}
 			defer db.Close()
-			id, err := db.IngestResults(store.DatasetMeta{Source: "nec", PublicDataPk: args[0], Name: path}, recs)
+			id, err := db.IngestResults(store.DatasetMeta{Source: "nec", PublicDataPk: args[0], Name: filepath.Base(path)}, recs)
 			if err != nil {
 				return err
 			}
@@ -100,7 +101,7 @@ func dbIngestCmd() *cobra.Command {
 				return err
 			}
 			defer db.Close()
-			id, err := db.IngestPolls(store.DatasetMeta{Source: "nesdc", PublicDataPk: "bulk-data", Name: path}, recs)
+			id, err := db.IngestPolls(store.DatasetMeta{Source: "nesdc", PublicDataPk: "bulk-data", Name: filepath.Base(path)}, recs)
 			if err != nil {
 				return err
 			}

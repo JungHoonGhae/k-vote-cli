@@ -76,7 +76,8 @@ SELECT r.id, r.dataset_id, r.sido, r.sgg, r.town, r.booth, r.vote_type,
             THEN CAST(r.votes AS REAL) / r.electorate END AS turnout
 FROM results r;
 
--- 선거구(sgg) 집계: 후보 합산이 의미 있는 범위. 지표 + 후보 득표율.
+-- 선거구(sgg) 집계: 지표만(sido·sgg·vote_type 별 SUM + 파생값). 후보 열은 없음 —
+-- 후보 합산이 필요하면 candidates 를 result_id 로 조인해 별도 계산(SchemaDoc 참고).
 CREATE VIEW IF NOT EXISTS v_agg_sgg AS
 WITH unit AS (
   SELECT dataset_id, sido, sgg, vote_type,
@@ -128,7 +129,7 @@ const SchemaDoc = `# kvote 로컬 DB 스키마
 
 ## 뷰 (표준 파생 — 정의는 뷰 SQL 그 자체)
 - v_results_derived: 투표구 원단위 + valid_votes=votes-invalid, turnout=votes/electorate
-- v_agg_sgg: 선거구 집계(지표 + 후보 합산 가능 범위)
+- v_agg_sgg: 선거구 집계(지표만). 후보 합산은 candidates 를 result_id 로 조인해 계산
 - v_agg_sido / v_agg_national: 상위 집계. 지역구 후보가 달라 후보 합산 안 함 — 지표만.
 
 ## 후보 득표율

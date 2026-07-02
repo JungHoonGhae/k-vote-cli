@@ -6,6 +6,7 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
@@ -40,6 +41,11 @@ func New(deps Deps) *mcp.Server {
 		Name:        "query",
 		Description: "kvote 로컬 DB에 read-only SQL을 실행한다. 스키마·파생값 정의는 먼저 kvote://schema 리소스를 읽을 것. 쓰기 SQL은 엔진이 거부한다.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryIn) (*mcp.CallToolResult, *store.QueryResult, error) {
+		// sql.Open 은 지연 연결이라 파일이 없어도 여기선 에러가 안 남 — 미리 확인해
+		// "unable to open database file" 같은 불친절한 저수준 에러 대신 안내 메시지를 준다.
+		if _, err := os.Stat(deps.DBPath); os.IsNotExist(err) {
+			return errResult("DB가 아직 없습니다 — 먼저 ingest_results/ingest_polls 로 적재하세요"), nil, nil
+		}
 		db, err := store.OpenReadOnly(deps.DBPath)
 		if err != nil {
 			return errResult(fmt.Sprintf("DB 열기 실패: %v — 먼저 ingest_results/ingest_polls 로 적재하세요", err)), nil, nil
