@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -109,6 +110,92 @@ func TestIngestResultsTool(t *testing.T) {
 	n, _ := qr.Rows[0][0].(int64)
 	if n < 1 {
 		t.Errorf("results row count = %v, want >= 1", qr.Rows[0][0])
+	}
+}
+
+// necSearchFixtureServer serves the data.go.kr dataset-list markup that
+// internal/nec/nec_test.go's TestDatasets exercises (two <dl> entries with
+// /data/<pk>/fileData.do anchors), so search_datasets has something to parse.
+func necSearchFixtureServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	const listHTML = `<html><body>
+<dl>
+  <dt>
+    <a href="/data/15025527/fileData.do"></a>
+    <span class="format">CSV</span>
+    <span class="format">JSON</span> + <span class="format">XML</span>
+    <span class="sr-only">중앙선거관리위원회_국회의원선거 개표결과</span> 미리보기
+  </dt>
+  <dd>[제22대 국회의원선거 개표결과] 2024년 4월 10일에 실시한 선거 결과</dd>
+</dl>
+<dl>
+  <dt>
+    <a href="/data/15101509/fileData.do"></a>
+    <span class="format">XLSX</span>
+    <span class="sr-only">중앙선거관리위원회_제8회 전국동시지방선거 개표결과</span> 미리보기
+  </dt>
+  <dd>[제8회 전국동시지방선거 개표결과] 2022년 6월 1일 결과</dd>
+</dl>
+</body></html>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/tcs/dss/selectDataSetList.do":
+			w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+			w.Write([]byte(listHTML))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// TestSearchDatasetsTool 는 selectDataSetList.do 픽스처를 통해 search_datasets
+// 왕복(키워드 검색 → dataset 목록)을 검증한다.
+func TestSearchDatasetsTool(t *testing.T) {
+	fixture := necSearchFixtureServer(t)
+	necClient := nec.New(nec.WithBaseURL(fixture.URL), nec.WithDelay(0))
+
+	p := filepath.Join(t.TempDir(), "k.db")
+	deps := Deps{DBPath: p, NEC: necClient}
+	srv := New(deps)
+
+	ct, st := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := srv.Connect(ctx, st, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	cs, err := client.Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "search_datasets",
+		Arguments: map[string]any{"keyword": "개표결과"},
+	})
+	if err != nil {
+		t.Fatalf("CallTool(search_datasets): %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("search_datasets tool error: %+v", res.Content)
+	}
+
+	var out searchOut
+	if len(res.Content) == 0 {
+		t.Fatal("search_datasets returned no content")
+	}
+	tc, ok := res.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected text content, got %T", res.Content[0])
+	}
+	if err := json.Unmarshal([]byte(tc.Text), &out); err != nil {
+		t.Fatalf("unmarshal search_datasets result: %v", err)
+	}
+	if len(out.Datasets) < 1 {
+		t.Fatalf("got %d datasets, want >= 1: %+v", len(out.Datasets), out.Datasets)
 	}
 }
 
