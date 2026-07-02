@@ -6,6 +6,7 @@ import (
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
 	"github.com/JungHoonGhae/k-vote-cli/internal/output"
+	"github.com/JungHoonGhae/k-vote-cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -13,6 +14,7 @@ var (
 	flagFormat  string
 	flagDelay   time.Duration
 	flagBaseURL string
+	flagDBPath  string
 )
 
 var rootCmd = &cobra.Command{
@@ -35,12 +37,15 @@ func init() {
 	pf.StringVarP(&flagFormat, "format", "f", "json", "출력 형식: json | jsonl | table")
 	pf.DurationVar(&flagDelay, "delay", nesdc.DefaultDelay, "요청 간 최소 간격 (rate limit)")
 	pf.StringVar(&flagBaseURL, "base-url", "", "포털 base URL 재정의 (테스트용)")
+	pf.StringVar(&flagDBPath, "db", "", "로컬 DB 경로 (기본: OS 설정 디렉터리/kvote/kvote.db)")
 
 	rootCmd.AddCommand(nesdcCmd())
 	rootCmd.AddCommand(necCmd())
 	rootCmd.AddCommand(apiCmd())
 	rootCmd.AddCommand(doctorCmd())
 	rootCmd.AddCommand(versionCmd())
+	rootCmd.AddCommand(mcpCmd())
+	rootCmd.AddCommand(dbCmd())
 }
 
 // resolveFormat parses the --format flag.
@@ -64,4 +69,12 @@ func newNECClient() *nec.Client {
 		opts = append(opts, nec.WithBaseURL(flagBaseURL))
 	}
 	return nec.New(opts...)
+}
+
+// resolveDBPath returns the --db override or the OS-default path.
+func resolveDBPath() (string, error) {
+	if flagDBPath != "" {
+		return flagDBPath, nil
+	}
+	return store.DefaultPath()
 }
