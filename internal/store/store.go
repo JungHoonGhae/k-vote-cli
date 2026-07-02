@@ -58,5 +58,21 @@ func OpenReadOnly(path string) (*DB, error) {
 	return &DB{db: sdb}, nil
 }
 
-// migrate is filled in Task 2. For now it is a no-op so Open works.
-func (d *DB) migrate() error { return nil }
+// migrate applies SchemaSQL when the DB is new or matches the current version.
+// On an incompatible version it errors advising recreation (no migration chain in v1).
+func (d *DB) migrate() error {
+	var v int
+	if err := d.db.QueryRow("PRAGMA user_version").Scan(&v); err != nil {
+		return err
+	}
+	if v != 0 && v != schemaVersion {
+		return fmt.Errorf("db schema version %d != %d (지원 안 함) — DB 파일을 삭제하고 재생성하세요", v, schemaVersion)
+	}
+	if _, err := d.db.Exec(SchemaSQL); err != nil {
+		return fmt.Errorf("apply schema: %w", err)
+	}
+	if _, err := d.db.Exec(fmt.Sprintf("PRAGMA user_version = %d", schemaVersion)); err != nil {
+		return err
+	}
+	return nil
+}
