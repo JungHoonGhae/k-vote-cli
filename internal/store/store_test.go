@@ -3,6 +3,8 @@ package store
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 )
 
 func TestOpenCreatesFileAndCloses(t *testing.T) {
@@ -54,5 +56,36 @@ func TestMigrateCreatesTablesAndViews(t *testing.T) {
 		if err != nil || n != 1 {
 			t.Errorf("object %q: count=%d err=%v", name, n, err)
 		}
+	}
+}
+
+func sampleResults() []nec.ResultRecord {
+	return []nec.ResultRecord{
+		{Sido: "서울", District: "종로구", Town: "청운효자동", Booth: "제1투", VoteType: "본투표",
+			Electorate: 100, Votes: 80, Invalid: 5, Abstention: 20,
+			Candidates: []nec.CandidateVote{{Party: "A당", Name: "김", Votes: 40}, {Party: "B당", Name: "이", Votes: 35}}},
+		{Sido: "서울", District: "종로구", Town: "관내사전투표", Booth: "관내사전투표", VoteType: "관내사전",
+			Electorate: 0, Votes: 20, Invalid: 1, Abstention: 0,
+			Candidates: []nec.CandidateVote{{Party: "A당", Name: "김", Votes: 12}, {Party: "B당", Name: "이", Votes: 7}}},
+	}
+}
+
+func TestIngestResultsIdempotent(t *testing.T) {
+	db, _ := Open(filepath.Join(t.TempDir(), "k.db"))
+	defer db.Close()
+	meta := DatasetMeta{Source: "nec", PublicDataPk: "123", Name: "총선개표.csv"}
+
+	if _, err := db.IngestResults(meta, sampleResults()); err != nil {
+		t.Fatalf("ingest 1: %v", err)
+	}
+	if _, err := db.IngestResults(meta, sampleResults()); err != nil {
+		t.Fatalf("ingest 2: %v", err)
+	}
+	var ds, rs, cs int
+	db.SQL().QueryRow("SELECT count(*) FROM datasets").Scan(&ds)
+	db.SQL().QueryRow("SELECT count(*) FROM results").Scan(&rs)
+	db.SQL().QueryRow("SELECT count(*) FROM candidates").Scan(&cs)
+	if ds != 1 || rs != 2 || cs != 4 {
+		t.Errorf("재적재 후 중복: datasets=%d results=%d candidates=%d (want 1/2/4)", ds, rs, cs)
 	}
 }
