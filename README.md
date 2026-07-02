@@ -76,7 +76,7 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 
 ## 기능
 
-> 출력은 `-f json|jsonl|table`. **🔑 표시 외 모든 명령은 키 없이 동작**합니다.
+> 출력은 `-f json|jsonl|table`. **🔑 표시 외 모든 명령은 API 키 없이 동작**합니다.
 > 🔑 = data.go.kr 인증키 필요(`kvote api` 로 자동 발급) · 🧪 = 실험적(키리스 경로 우선).
 
 | 분류 | 기능 | 커맨드 | 키 |
@@ -178,7 +178,7 @@ make build        # -> bin/kvote
 k-vote-cli 설치: go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 
 `kvote doctor` 로 핵심 경로가 살아있는지 먼저 확인.
-개표결과는 키 없이 바로 받을 수 있다:
+개표결과는 API 키 없이 바로 받을 수 있다:
   kvote nec corpus --normalize -o ./corpus   # 역대 핵심 개표결과 → 투표구별 JSONL
   kvote nec results <pk> -f jsonl             # 단일 데이터셋 정규화
 출력은 -f jsonl 로 받아 jq/duckdb 로 질의.
@@ -213,6 +213,22 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl        # 제22대 총선 당선�
 
 `kvote mcp` 는 stdio 로 [Model Context Protocol](https://modelcontextprotocol.io) 서버를 띄웁니다.
 에이전트가 셸 명령 대신 tool 호출로 같은 데이터에 접근할 수 있습니다.
+
+### 왜 로컬 DB에 적재하나?
+
+로컬 DB는 **필수가 아니라 선택**입니다. 단발성 분석이면 `nec results`/`nesdc sync` 로 JSONL을 받아
+`jq`·`duckdb` 로 바로 처리하는 게 더 빠릅니다. 아래가 필요할 때 적재가 값을 냅니다.
+
+- **교차 질의**: 여러 선거·개표결과·여론조사를 한 곳에 모아 SQL로 조인·집계합니다. JSONL 파일 여러 개를
+  매번 맞춰 다루는 것보다 강력합니다.
+- **반복 재사용**: 투표구 수십만 행을 한 번만 내려받아 정규화해 두면, 이후 질의는 다운로드·파싱 없이
+  즉시 실행됩니다.
+- **표준 파생값을 SELECT 한 줄로**: 투표율·득표율·유효표·다단계 집계가 뷰(`v_results_derived`·`v_agg_*`)로
+  미리 정의돼 있어, 매번 산식을 다시 짤 필요가 없습니다. 정의는 뷰 SQL에 명시(중립) — `kvote://schema` 참조.
+- **에이전트 친화**: MCP `query` 로 에이전트가 자연어를 SQL로 옮겨 스스로 슬라이스합니다. 셸 파이프라인을
+  조립하거나 파일을 관리할 필요가 없습니다.
+
+원자료는 그대로 저장되고, DB는 접근·질의 편의를 더할 뿐 **어떤 판단도 내리지 않습니다.**
 
 | tool / 리소스 | 내용 | 키 |
 |---|---|:--:|
@@ -298,7 +314,7 @@ DB 경로는 기본적으로 OS 설정 디렉터리(`.../kvote/kvote.db`)이며 
 | `api` | data.go.kr 계정 | OpenAPI 활용신청·인증키·만료 관리 | 🔑 |
 
 `nec` 은 선거통계시스템(info.nec.go.kr)이 robots.txt 로 전면 크롤링을 금지하므로 **직접 스크래핑하지
-않습니다.** 대신 선관위가 공식 배포 채널인 **data.go.kr 의 개표결과 파일(CSV/XLSX)** 을 키 없이
+않습니다.** 대신 선관위가 공식 배포 채널인 **data.go.kr 의 개표결과 파일(CSV/XLSX)** 을 API 키 없이
 검색·다운로드합니다. `nesdc.go.kr` 은 공식 API 가 없어 스크래핑이 유일한 프로그램적 접근입니다.
 
 ## 개발

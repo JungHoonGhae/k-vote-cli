@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 
 데이터 출처(provider):
   nesdc   중앙선거여론조사심의위원회 (nesdc.go.kr) — 여론조사 결과·기관 현황
-  nec     중앙선거관리위원회 (nec.go.kr) — 선거 통계 (키 없는 공개 데이터)
+  nec     중앙선거관리위원회 (nec.go.kr) — 선거 통계 (API 키 없이 받는 공개 데이터)
 
 모든 출력은 기본 JSON이며 --format 으로 jsonl/table 선택 가능합니다.
 API 키 발급이 필요 없습니다.`,

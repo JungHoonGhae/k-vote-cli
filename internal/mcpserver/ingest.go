@@ -27,7 +27,7 @@ type ingestPollsIn struct {
 func registerIngestTools(s *mcp.Server, deps Deps) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "ingest_results",
-		Description: "data.go.kr publicDataPk 의 개표결과(CSV)를 키 없이 내려받아 정규화 후 로컬 DB에 적재한다(멱등). XLSX 전용 데이터셋은 미지원.",
+		Description: "data.go.kr publicDataPk 의 개표결과(CSV)를 API 키 없이 내려받아 정규화 후 로컬 DB에 적재한다(멱등). XLSX 전용 데이터셋은 미지원.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in ingestResultsIn) (*mcp.CallToolResult, *ingestSummary, error) {
 		dir, err := os.MkdirTemp("", "kvote-mcp-")
 		if err != nil {

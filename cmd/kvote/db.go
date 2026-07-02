@@ -129,6 +129,9 @@ func dbQueryCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+				return fmt.Errorf("로컬 DB가 아직 없습니다 (%s) — 먼저 kvote db ingest results/polls 로 적재하세요", dbPath)
+			}
 			db, err := store.OpenReadOnly(dbPath)
 			if err != nil {
 				return err
