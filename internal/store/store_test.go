@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
+	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
 )
 
 func TestOpenCreatesFileAndCloses(t *testing.T) {
@@ -87,5 +88,27 @@ func TestIngestResultsIdempotent(t *testing.T) {
 	db.SQL().QueryRow("SELECT count(*) FROM candidates").Scan(&cs)
 	if ds != 1 || rs != 2 || cs != 4 {
 		t.Errorf("재적재 후 중복: datasets=%d results=%d candidates=%d (want 1/2/4)", ds, rs, cs)
+	}
+}
+
+func TestIngestPollsIdempotent(t *testing.T) {
+	db, _ := Open(filepath.Join(t.TempDir(), "k.db"))
+	defer db.Close()
+	meta := DatasetMeta{Source: "nesdc", PublicDataPk: "bulk", Name: "누적.xlsx"}
+	recs := []nesdc.PollRecord{
+		{Period: "2024", Agency: "갤럽", SampleSize: "1000",
+			PartySupport: map[string]string{"A당": "40", "B당": "35"}},
+	}
+	if _, err := db.IngestPolls(meta, recs); err != nil {
+		t.Fatalf("ingest 1: %v", err)
+	}
+	if _, err := db.IngestPolls(meta, recs); err != nil {
+		t.Fatalf("ingest 2: %v", err)
+	}
+	var ps, pp int
+	db.SQL().QueryRow("SELECT count(*) FROM polls").Scan(&ps)
+	db.SQL().QueryRow("SELECT count(*) FROM party_support").Scan(&pp)
+	if ps != 1 || pp != 2 {
+		t.Errorf("재적재 후 중복: polls=%d party_support=%d (want 1/2)", ps, pp)
 	}
 }
