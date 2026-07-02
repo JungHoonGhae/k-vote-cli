@@ -147,3 +147,51 @@ func TestQueryRejectsWrite(t *testing.T) {
 		t.Fatal("expected write SQL to be rejected on read-only DB")
 	}
 }
+
+// v_agg_sgg 뷰와 nec.Aggregate(AggSgg) 는 같은 정의의 두 구현이다. 같은 픽스처에서
+// 지표·투표율이 일치해야 정의 드리프트가 없다.
+func TestViewMatchesAggregate(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "k.db")
+	db, _ := Open(p)
+	recs := sampleResults()
+	db.IngestResults(DatasetMeta{Source: "nec", PublicDataPk: "1"}, recs)
+	db.Close()
+
+	// Go 경로: 선거구 집계 (by-votetype=false → vote_type 합쳐짐).
+	aggs := nec.Aggregate(recs, nec.AggSgg, false)
+	want := map[string][3]int{} // key = sido|sgg → {electorate, votes, invalid}
+	for _, a := range aggs {
+		want[a.Sido+"|"+a.District] = [3]int{a.Electorate, a.Votes, a.Invalid}
+	}
+
+	// SQL 경로: v_agg_sgg 는 vote_type 별이므로 sido,sgg 로 다시 합산해 비교.
+	ro, _ := OpenReadOnly(p)
+	defer ro.Close()
+	qr, err := ro.Query(
+		`SELECT sido, sgg, SUM(electorate), SUM(votes), SUM(invalid)
+		 FROM v_agg_sgg GROUP BY sido, sgg ORDER BY sido, sgg`, 100)
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if len(qr.Rows) != len(want) {
+		t.Fatalf("행수 불일치: sql=%d go=%d", len(qr.Rows), len(want))
+	}
+	for _, row := range qr.Rows {
+		key := toStr(row[0]) + "|" + toStr(row[1])
+		got := [3]int{toInt(row[2]), toInt(row[3]), toInt(row[4])}
+		if got != want[key] {
+			t.Errorf("%s: sql=%v go=%v", key, got, want[key])
+		}
+	}
+}
+
+func toStr(v any) string { s, _ := v.(string); return s }
+func toInt(v any) int {
+	switch n := v.(type) {
+	case int64:
+		return int(n)
+	case int:
+		return n
+	}
+	return 0
+}
