@@ -85,7 +85,6 @@ func Serve(ctx context.Context, deps Deps) error {
 	return New(deps).Run(ctx, &mcp.StdioTransport{})
 }
 
-// registerIngestTools and registerSearchTools are stubs filled in by Task 8
-// (ingest_results/ingest_polls) and Task 9 (search) respectively.
-func registerIngestTools(s *mcp.Server, deps Deps) {}
+// registerSearchTools is a stub filled in by Task 9 (search).
+// registerIngestTools is implemented in ingest.go (Task 8).
 func registerSearchTools(s *mcp.Server, deps Deps) {}
