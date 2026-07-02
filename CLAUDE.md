@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 개요
 
-`kvote` 는 한국 선거 공개 데이터의 **접근성을 높이는** 비공식 Go CLI 입니다. **멀티-프로바이더**
+`kvote` 는 한국 선거 공개 데이터의 **접근성을 높이는** Go CLI 입니다. **멀티-프로바이더**
 구조로 NESDC(중앙선거여론조사심의위원회, 여론조사)와 NEC(중앙선거관리위원회 → data.go.kr,
 개표결과) 를 키 없이 검색·다운로드·정규화합니다. **API 키 발급이 필요 없는** 키리스 접근이
 핵심 설계 원칙입니다.

@@ -20,7 +20,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "kvote",
 	Short: "한국 선거 데이터 수집 CLI (NESDC 여론조사 · NEC 선거)",
-	Long: `kvote — 한국 선거 관련 공개 데이터를 수집하는 비공식 CLI.
+	Long: `kvote — 한국 선거 관련 공개 데이터를 수집하는 CLI.
 
 데이터 출처(provider):
   nesdc   중앙선거여론조사심의위원회 (nesdc.go.kr) — 여론조사 결과·기관 현황
