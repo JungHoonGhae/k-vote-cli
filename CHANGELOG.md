@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-02
+
+로컬 통합 데이터셋과 AI 에이전트 인터페이스. 수집한 개표결과·여론조사를 하나의 로컬 SQLite로 모아, 사람은 SQL로 질의하고 AI 에이전트는 MCP로 탐색·수집·질의를 한 번에 합니다. 원자료는 그대로 보존하고, 파생값은 정의가 명시된 표준 뷰(투표율·득표율·유효표)만 제공하는 중립 원칙은 그대로입니다.
+
+### MCP — AI 에이전트 인터페이스 (키리스)
+- **`kvote mcp`** — kvote를 Model Context Protocol 서버(stdio)로 노출합니다. 에이전트가 연결 하나로 데이터 탐색 → 키 없는 다운로드 → 로컬 적재 → SQL 질의까지 끝냅니다.
+- 도구 5종: `search_datasets`(파일 데이터 검색) · `list_elections`(선거종류별 최신 회차) · `ingest_results`(개표결과 적재) · `ingest_polls`(여론조사 적재) · `query`(read-only SQL).
+- 리소스 `kvote://schema` — 테이블·뷰 스키마와 파생값 정의. 에이전트가 질의 전에 읽는 진입점.
+
+### 로컬 데이터셋 (SQLite, 중립)
+- **`kvote db ingest results <pk>`** — 개표결과 CSV를 내려받아 투표구 단위로 로컬 DB에 적재합니다(멱등: 같은 데이터셋 재적재 시 교체).
+- **`kvote db ingest polls`** — NESDC 누적 여론조사 엑셀을 적재합니다.
+- **`kvote db query "<sql>"`** — 로컬 DB에 read-only SQL을 실행합니다. 쓰기 SQL은 엔진이 거부합니다.
+- 원자료 테이블(개표결과·후보·여론조사·정당지지)과 표준 파생 뷰(`v_results_derived`·`v_agg_sgg`·`v_agg_sido`·`v_agg_national`)를 제공합니다. 뷰 정의는 기존 `nec results --aggregate`와 동치이며, 동치성 테스트로 정의 드리프트를 막습니다.
+- 전역 `--db` 플래그로 DB 경로를 지정할 수 있습니다(기본: OS 설정 디렉터리).
+
 ## [0.1.0] - 2026-06-28
 
 첫 공개 릴리즈. 흩어진 한국 선거 공개 데이터(개표결과·여론조사)를 **키 없이** 한 명령으로 검색·다운로드·정규화합니다.
@@ -38,5 +54,6 @@
 ### 배포
 - macOS·Linux·Windows (amd64·arm64) 바이너리. Homebrew tap(`JungHoonGhae/k-vote-cli`) 제공.
 
-[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JungHoonGhae/k-vote-cli/releases/tag/v0.1.0
