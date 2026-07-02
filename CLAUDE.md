@@ -40,6 +40,10 @@ go test ./internal/nesdc -run TestDetailResults -v
 ./bin/kvote nesdc list -f table          # 여론조사 결과 목록
 ./bin/kvote nesdc show <nttId>           # 상세 메타
 ./bin/kvote nesdc pull <nttId> -o /tmp/x # 첨부 다운로드
+
+./bin/kvote mcp                          # MCP 서버 (stdio) — AI 에이전트 연결
+./bin/kvote db ingest results <pk>       # 개표결과 로컬 DB 적재
+./bin/kvote db query "SELECT ..."        # read-only SQL 질의
 ```
 
 ## 아키텍처
@@ -69,6 +73,15 @@ internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (packag
   download.go       FileDown.do 다운로드 + 파일명 인코딩 복구
   bulk.go           data 게시판 누적 마스터 엑셀(excelize) → 정규화 PollRecord
   agency.go         onvy 조사기관 등록/취소 현황 파서
+internal/store/     로컬 SQLite 통합 데이터셋 (modernc, 키리스·중립)
+  store.go          open/close, 경로 결정, read-only 모드, user_version 마이그레이션
+  schema.go         DDL(원자료 테이블 + 표준 파생 뷰) + SchemaDoc(MCP 리소스 텍스트)
+  ingest.go         []ResultRecord / []PollRecord → dataset 단위 멱등 적재(트랜잭션)
+  query.go          read-only SQL 질의 → {columns, rows, truncated}
+internal/mcpserver/ MCP 서버 (stdio, modelcontextprotocol/go-sdk)
+  server.go         조립 + query tool + kvote://schema 리소스
+  ingest.go         ingest_results / ingest_polls tool (키리스 수집→적재)
+  search.go         search_datasets / list_elections tool (키리스 탐색)
 internal/output/    json / jsonl / table 렌더러 (한글 폭 보정)
 internal/version/   ldflags 주입 버전 메타
 ```
@@ -98,6 +111,9 @@ internal/version/   ldflags 주입 버전 메타
   `LatestBulkXlsx` 가 최신 글에서 `.xlsx` 첨부를 찾고, `ParseBulkXlsx` 가 시트(기간)별 2행 헤더
   (고정 메타 10열 + `정당지지율` 아래 동적 정당 열)를 `PollRecord` 로 정규화.
 - **rate limit**: `Client.throttle()` 이 요청 간 `--delay`(기본 700ms) 보장. 예의 있는 수집 원칙.
+- **로컬 DB 는 중립의 연장**: `internal/store` 는 원자료를 그대로 저장하고, 파생값은 뷰 SQL
+  정의(유효표·투표율·득표율)뿐. MCP `query` 는 **read-only 연결**(`mode=ro`)이라 쓰기 SQL 은
+  엔진이 거부한다. 뷰 정의는 `aggregate.go` 와 동치 테스트로 드리프트를 막는다.
 
 ### 테스트 전략
 

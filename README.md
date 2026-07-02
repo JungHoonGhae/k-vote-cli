@@ -209,6 +209,51 @@ export KVOTE_DATAGOKR_KEY=<일반 인증키>
 kvote nec winners 20240410 --sgtype 2 -f jsonl        # 제22대 총선 당선인 254명
 ```
 
+## MCP 서버 (AI 에이전트용)
+
+`kvote mcp` 는 stdio 로 [Model Context Protocol](https://modelcontextprotocol.io) 서버를 띄웁니다.
+에이전트가 셸 명령 대신 tool 호출로 같은 데이터에 접근할 수 있습니다.
+
+| tool / 리소스 | 내용 | 키 |
+|---|---|:--:|
+| `search_datasets` | data.go.kr 개표결과 파일 데이터셋 키워드 검색 | - |
+| `list_elections` | 선거종류 키워드로 최신 회차 데이터셋 조회 | - |
+| `ingest_results` | 개표결과를 내려받아 로컬 SQLite에 적재 (멱등) | - |
+| `ingest_polls` | NESDC 누적 여론조사 엑셀을 내려받아 적재 (멱등) | - |
+| `query` | 로컬 DB에 read-only SQL 질의 | - |
+| `kvote://schema` | 테이블·뷰 스키마 + 파생값 정의 (리소스, `query` 전에 먼저 읽기) | - |
+
+원자료는 그대로 저장되고, 파생값(투표율·득표율·유효표 등)은 뷰 SQL 정의로만 존재합니다.
+`query` 는 read-only 연결이라 쓰기 SQL은 엔진이 거부합니다 — 판단은 여전히 에이전트/사람의 몫입니다.
+
+에이전트 등록 예시 (Claude Code):
+
+```bash
+claude mcp add kvote -- kvote mcp
+```
+
+또는 설정 파일에 직접 등록:
+
+```json
+{
+  "mcpServers": {
+    "kvote": { "command": "kvote", "args": ["mcp"] }
+  }
+}
+```
+
+### `kvote db` (CLI에서 직접 SQLite 다루기)
+
+MCP 없이도 같은 로컬 DB를 CLI로 적재·질의할 수 있습니다.
+
+```bash
+kvote db ingest results <publicDataPk>   # 개표결과 CSV → 적재 (멱등)
+kvote db ingest polls                     # NESDC 누적 여론조사 엑셀 → 적재 (멱등)
+kvote db query "SELECT * FROM v_agg_sgg LIMIT 5" -f table
+```
+
+DB 경로는 기본적으로 OS 설정 디렉터리(`.../kvote/kvote.db`)이며 전역 플래그 `--db` 로 재정의합니다.
+
 ### 필터 (`nesdc sync`)
 
 | 플래그 | 의미 | 값 |
@@ -242,6 +287,7 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl        # 제22대 총선 당선�
 | `-f, --format` | `json` | 출력 형식 |
 | `--delay` | `700ms` | 요청 간 최소 간격 (rate limit) |
 | `--base-url` | - | 포털 base URL 재정의 (테스트용) |
+| `--db` | OS 설정 디렉터리 | 로컬 SQLite DB 경로 (`kvote mcp`/`kvote db` 가 사용) |
 
 ## 데이터 출처
 
