@@ -86,6 +86,7 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 | 개표결과 | 공개 데이터셋 검색 (개표결과 등) | `nec datasets -q <검색어>` | - |
 | 개표결과 | 선거종류 최신 회차 자동 해석 | `nec latest <키워드>` | - |
 | 개표결과 | 원본 파일 다운로드 (CSV/XLSX 자동) | `nec pull <pk>` | - |
+| 투표율 | 투표율 분석(ZIP)을 성별·연령대별·지역별로 정규화 | `nec turnout-analysis <pk>` | - |
 | 여론조사 | 기간/조건 전체를 JSONL 로 전수 수집 | `nesdc sync` | - |
 | 여론조사 | 누적 마스터 엑셀 → 정당지지율 (2023.10.30~ 1,400+건) | `nesdc bulk` | - |
 | 여론조사 | 단건 상세 메타 + 표본 구성 교차표 | `nesdc show <nttId> --crosstab` | - |
@@ -144,6 +145,7 @@ duckdb -c "SELECT * FROM read_json_auto('./corpus/*.jsonl') LIMIT 5"
 | 여론조사 표본 대표성·가중 | `nesdc show --crosstab` |
 | 기관×방식별 여론조사 분포 | `nesdc sync` → 전수 집계 |
 | 정당지지율 시계열 | `nesdc bulk` |
+| 성별·연령대별 투표율 | `nec turnout-analysis <pk>` — 여론조사 표본 교차표(`nesdc show --crosstab`)와 같은 축(성별·연령)이라 여론조사·투표율·개표결과를 나란히 비교할 수 있습니다. |
 
 ## 설치
 
@@ -236,6 +238,7 @@ kvote nec winners 20240410 --sgtype 2 -f jsonl        # 제22대 총선 당선�
 | `list_elections` | 선거종류 키워드로 최신 회차 데이터셋 조회 | - |
 | `ingest_results` | 개표결과를 내려받아 로컬 SQLite에 적재 (멱등) | - |
 | `ingest_polls` | NESDC 누적 여론조사 엑셀을 내려받아 적재 (멱등) | - |
+| `ingest_turnout` | 투표율 분석(성별·연령대별)을 내려받아 적재 (멱등) | - |
 | `query` | 로컬 DB에 read-only SQL 질의 | - |
 | `kvote://schema` | 테이블·뷰 스키마 + 파생값 정의 (리소스, `query` 전에 먼저 읽기) | - |
 
@@ -265,6 +268,7 @@ MCP 없이도 같은 로컬 DB를 CLI로 적재·질의할 수 있습니다.
 ```bash
 kvote db ingest results <publicDataPk>   # 개표결과 CSV → 적재 (멱등)
 kvote db ingest polls                     # NESDC 누적 여론조사 엑셀 → 적재 (멱등)
+kvote db ingest turnout <publicDataPk>    # 투표율 분석(성별·연령대) → 적재 (멱등)
 kvote db query "SELECT * FROM v_agg_sgg LIMIT 5" -f table
 ```
 

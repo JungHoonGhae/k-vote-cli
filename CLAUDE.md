@@ -43,7 +43,10 @@ go test ./internal/nesdc -run TestDetailResults -v
 
 ./bin/kvote mcp                          # MCP 서버 (stdio) — AI 에이전트 연결
 ./bin/kvote db ingest results <pk>       # 개표결과 로컬 DB 적재
+./bin/kvote db ingest turnout <pk>       # 투표율 분석(성별·연령대) 로컬 DB 적재
 ./bin/kvote db query "SELECT ..."        # read-only SQL 질의
+
+./bin/kvote nec turnout-analysis <pk>    # 투표율 분석 ZIP → 성별·연령대별 정규화
 ```
 
 ## 아키텍처
@@ -62,6 +65,8 @@ internal/nec/       NEC provider — data.go.kr 공개 파일 데이터 클라�
   xlsx.go           XLSX 멀티시트 wide→long 파서 (앵커 라벨 기반, 선거별 손매핑 없음)
   aggregate.go      투표구 레코드 → 다단계 집계(AggLevel) + 파생값(투표율·득표율·유효표). 중립.
   openportal.go     data.nec.go.kr 개방포털 소스 (datasets/files/download). robots 허용·키리스.
+  turnout.go        투표율 분석 ZIP → 성별·연령대별 TurnoutAnalysisRecord (앵커 기반, graceful-skip;
+                     ZIP 엔트리명 CP949 디코딩)
   filename.go       Content-Disposition 파일명 인코딩 복구
 internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (package nesdc)
   client.go         rate-limited HTTP + goquery 파서 진입점(getDoc)
@@ -75,12 +80,14 @@ internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (packag
   agency.go         onvy 조사기관 등록/취소 현황 파서
 internal/store/     로컬 SQLite 통합 데이터셋 (modernc, 키리스·중립)
   store.go          open/close, 경로 결정, read-only 모드, user_version 마이그레이션
-  schema.go         DDL(원자료 테이블 + 표준 파생 뷰) + SchemaDoc(MCP 리소스 텍스트)
-  ingest.go         []ResultRecord / []PollRecord → dataset 단위 멱등 적재(트랜잭션)
+  schema.go         DDL(원자료 테이블 turnout 포함 + 표준 파생 뷰 v_turnout_derived 등) +
+                     SchemaDoc(MCP 리소스 텍스트)
+  ingest.go         []ResultRecord / []PollRecord / []TurnoutAnalysisRecord → dataset 단위
+                     멱등 적재(트랜잭션)
   query.go          read-only SQL 질의 → {columns, rows, truncated}
 internal/mcpserver/ MCP 서버 (stdio, modelcontextprotocol/go-sdk)
   server.go         조립 + query tool + kvote://schema 리소스
-  ingest.go         ingest_results / ingest_polls tool (키리스 수집→적재)
+  ingest.go         ingest_results / ingest_polls / ingest_turnout tool (키리스 수집→적재)
   search.go         search_datasets / list_elections tool (키리스 탐색)
 internal/output/    json / jsonl / table 렌더러 (한글 폭 보정)
 internal/version/   ldflags 주입 버전 메타
@@ -114,6 +121,10 @@ internal/version/   ldflags 주입 버전 메타
 - **로컬 DB 는 중립의 연장**: `internal/store` 는 원자료를 그대로 저장하고, 파생값은 뷰 SQL
   정의(유효표·투표율·득표율)뿐. MCP `query` 는 **read-only 연결**(`mode=ro`)이라 쓰기 SQL 은
   엔진이 거부한다. 뷰 정의는 `aggregate.go` 와 동치 테스트로 드리프트를 막는다.
+- **투표율 분석은 개표결과에 없는 인구통계 축**(성별·연령대) — `turnout.rate` 는 소스 원자료를
+  그대로 보존하고, `v_turnout_derived.rate_computed` 는 정의가 명시된 재계산(voters/electorate*100)을
+  나란히 제공한다(중립, 판단 없음). ZIP 엔트리 파일명이 CP949(non-UTF8)라 `decodeKorean` 으로
+  디코딩한 뒤 `성별` 문자열로 대상 시트를 매칭한다.
 
 ### 테스트 전략
 
