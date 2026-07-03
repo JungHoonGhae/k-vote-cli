@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -29,7 +30,7 @@ API 키 없이 검색·다운로드합니다. (info.nec.go.kr 선거통계시스
 차단이라 스크래핑하지 않고, 공식 배포 채널인 data.go.kr 를 사용합니다.)`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd(), necElectionsCmd(), necCorpusCmd())
+	c.AddCommand(necDatasetsCmd(), necPullCmd(), necResultsCmd(), necLatestCmd(), necTurnoutCmd(), necWinnersCmd(), necElectionsCmd(), necCorpusCmd(), turnoutAnalysisCmd())
 	return c
 }
 
@@ -686,6 +687,91 @@ func renderTurnout(cmd *cobra.Command, format output.Format, recs []nec.TurnoutR
 			rows = append(rows, []string{
 				r.Sido, r.Gusigun, fmt.Sprint(r.Electorate), fmt.Sprint(r.Votes),
 				fmt.Sprintf("%.1f", r.Turnout),
+			})
+		}
+		return output.WriteTable(cmd.OutOrStdout(), headers, rows)
+	}
+}
+
+// turnoutAnalysisCmd downloads (or reads --file) a NEC "투표율 분석" ZIP dataset
+// and normalizes it into 지역×성별×연령대 turnout cells. Independent of the vote
+// results axis — it's the demographic "who voted" dimension.
+func turnoutAnalysisCmd() *cobra.Command {
+	var file string
+	c := &cobra.Command{
+		Use:   "turnout-analysis <publicDataPk>",
+		Short: "투표율 분석(ZIP)을 성별·연령대별 투표율 레코드로 정규화",
+		Long: `data.go.kr 의 "투표율 분석" 데이터셋(ZIP)을 받아 성별·연령대별·지역별 투표율을
+정규화합니다. 개표결과에 없는 인구통계 축(누가 투표했는가)이라 독립적입니다.
+소스가 보고한 투표율은 원자료로 보존합니다.
+
+--file 로 이미 받은 ZIP 경로를 주면 다운로드 없이 파싱합니다.
+(사전/재외투표·PDF 전용 데이터셋은 미지원 — nec pull 로 원본을 받으세요.)`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format, err := resolveFormat()
+			if err != nil {
+				return err
+			}
+			var raw []byte
+			var election string
+			switch {
+			case file != "":
+				if raw, err = os.ReadFile(file); err != nil {
+					return err
+				}
+				election = strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+			case len(args) == 1:
+				dir, err := os.MkdirTemp("", "kvote-turnout-")
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(dir)
+				path, err := newNECClient().Download(context.Background(), args[0], dir)
+				if err != nil {
+					return err
+				}
+				if raw, err = os.ReadFile(path); err != nil {
+					return err
+				}
+				election = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			default:
+				return fmt.Errorf("publicDataPk 또는 --file 중 하나가 필요합니다")
+			}
+
+			recs, err := nec.ParseTurnoutAnalysis(raw)
+			if err != nil {
+				return err
+			}
+			for i := range recs {
+				recs[i].Election = election
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "정규화 완료: %d개 (지역×성별×연령) 셀\n", len(recs))
+			return renderTurnoutAnalysis(cmd, format, recs)
+		},
+	}
+	c.Flags().StringVar(&file, "file", "", "이미 받은 투표율 분석 ZIP 경로 (다운로드 생략)")
+	return c
+}
+
+func renderTurnoutAnalysis(cmd *cobra.Command, format output.Format, recs []nec.TurnoutAnalysisRecord) error {
+	switch format {
+	case output.JSON:
+		return output.WriteJSON(cmd.OutOrStdout(), recs)
+	case output.JSONL:
+		items := make([]any, len(recs))
+		for i := range recs {
+			items[i] = recs[i]
+		}
+		return output.WriteJSONL(cmd.OutOrStdout(), items)
+	default:
+		headers := []string{"시도", "지역", "성별", "연령대", "선거인수", "투표자수", "투표율", "구분"}
+		rows := make([][]string, 0, len(recs))
+		for _, r := range recs {
+			rows = append(rows, []string{
+				r.Sido, r.Region, r.Gender, r.AgeGroup,
+				strconv.Itoa(r.Electorate), strconv.Itoa(r.Voters),
+				strconv.FormatFloat(r.Rate, 'f', 1, 64), r.Category,
 			})
 		}
 		return output.WriteTable(cmd.OutOrStdout(), headers, rows)

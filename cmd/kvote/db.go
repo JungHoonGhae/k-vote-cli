@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
@@ -110,7 +111,51 @@ func dbIngestCmd() *cobra.Command {
 		},
 	}
 
-	ingest.AddCommand(results, polls)
+	turnout := &cobra.Command{
+		Use:   "turnout <publicDataPk>",
+		Short: "투표율 분석 ZIP을 성별·연령대별로 적재 (멱등)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dbPath, err := resolveDBPath()
+			if err != nil {
+				return err
+			}
+			dir, err := os.MkdirTemp("", "kvote-db-turnout-")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(dir)
+			path, err := newNECClient().Download(context.Background(), args[0], dir)
+			if err != nil {
+				return err
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			recs, err := nec.ParseTurnoutAnalysis(raw)
+			if err != nil {
+				return err
+			}
+			election := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+			for i := range recs {
+				recs[i].Election = election
+			}
+			db, err := store.Open(dbPath)
+			if err != nil {
+				return err
+			}
+			defer db.Close()
+			id, err := db.IngestTurnout(store.DatasetMeta{Source: "nec", PublicDataPk: args[0], Name: filepath.Base(path), ElectionName: election}, recs)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "적재 완료: dataset=%d, %d개 셀\n", id, len(recs))
+			return nil
+		},
+	}
+
+	ingest.AddCommand(results, polls, turnout)
 	return ingest
 }
 
