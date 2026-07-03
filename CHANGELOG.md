@@ -6,8 +6,12 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-03
+
+여론조사 결과 집계표를 정확히 골라 받습니다. 국정수행 지지율처럼 정규화 마스터가 없고 조사별 집계표 PDF에만 있는 수치를, kvote 가 올바른 PDF를 정확히 surface 해주면 사람·AI 에이전트가 직접 판독합니다. 이질적 PDF 수치를 억지로 파싱해 조용히 틀릴 위험을 피하는 의도적 설계입니다.
+
 ### NESDC — 집계표 받기 (API 키 없이)
-- **`nesdc tabulation`** — 여론조사의 여러 첨부 중 결과 집계표(통계표) PDF만 정확히 골라 내려받습니다(단건 `<nttId>` / 배치 `--sync --from`). 설문지·질문지는 제외하고, 집계·통계 파일 또는 유일한 비설문 PDF를 선택합니다. kvote 는 파일을 surface 할 뿐 표 안의 수치(국정수행 긍정/부정 등)를 파싱하지 않습니다 — 판독은 사람 또는 AI 에이전트의 몫입니다(이질적 PDF 파싱의 오독 위험을 피하기 위한 의도적 설계).
+- **`nesdc tabulation`** — 여론조사의 여러 첨부 중 결과 집계표(통계표) PDF만 정확히 골라 내려받습니다(단건 `<nttId>` / 배치 `--sync --from`). 설문지·질문지는 제외하고, 집계·통계 파일 또는 유일한 비설문 PDF를 선택합니다. kvote 는 파일을 surface 할 뿐 표 안의 수치(국정수행 긍정/부정 등)를 파싱하지 않습니다 — 판독은 사람 또는 AI 에이전트의 몫입니다.
 
 ## [0.3.0] - 2026-07-03
 
@@ -65,7 +69,8 @@
 ### 배포
 - macOS·Linux·Windows (amd64·arm64) 바이너리. Homebrew tap(`JungHoonGhae/k-vote-cli`) 제공.
 
-[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JungHoonGhae/k-vote-cli/releases/tag/v0.1.0
