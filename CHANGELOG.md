@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-03
+
+성별·연령대별 투표율. 개표결과에는 없는 "누가 투표했는가"의 인구통계 축(성별·연령대·지역)을 API 키 없이 정규화합니다. 여론조사 표본 교차표(`nesdc show --crosstab`)와 같은 축이라, 여론조사·투표율·개표결과를 나란히 비교할 수 있습니다. 원자료 보존 + 정의 명시 파생값이라는 중립 원칙은 그대로입니다.
+
 ### NEC — 투표율 (API 키 없이)
 - **`nec turnout-analysis`** — data.go.kr "투표율 분석" ZIP을 성별·연령대별·지역별 투표율로 정규화합니다. 개표결과에 없는 인구통계 축이라, 여론조사 교차표·개표결과와 나란히 비교할 수 있습니다.
 - **`kvote db ingest turnout`** / MCP **`ingest_turnout`** — 위 데이터를 로컬 DB에 적재해 SQL로 교차 질의합니다. 소스가 보고한 투표율은 원자료로 보존하고, `v_turnout_derived` 가 재계산값(rate_computed)을 나란히 제공합니다.
@@ -58,6 +62,7 @@
 ### 배포
 - macOS·Linux·Windows (amd64·arm64) 바이너리. Homebrew tap(`JungHoonGhae/k-vote-cli`) 제공.
 
-[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JungHoonGhae/k-vote-cli/releases/tag/v0.1.0
