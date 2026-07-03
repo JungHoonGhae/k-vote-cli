@@ -17,7 +17,110 @@ func nesdcCmd() *cobra.Command {
 		Use:   "nesdc",
 		Short: "중앙선거여론조사심의위원회 (nesdc.go.kr) 여론조사 데이터",
 	}
-	c.AddCommand(nesdcShowCmd(), nesdcPullCmd(), nesdcSyncCmd(), nesdcBulkCmd())
+	c.AddCommand(nesdcShowCmd(), nesdcPullCmd(), nesdcSyncCmd(), nesdcBulkCmd(), nesdcTabulationCmd())
+	return c
+}
+
+// tabManifest is one line of `nesdc tabulation` output: which 집계표 PDF was saved
+// for a survey. kvote surfaces the file; number reading is the consumer's job.
+type tabManifest struct {
+	NttID      string `json:"nttId"`
+	Agency     string `json:"agency,omitempty"`
+	Client     string `json:"client,omitempty"`
+	SurveyDate string `json:"surveyDate,omitempty"`
+	Attachment string `json:"attachment"`
+	Path       string `json:"path"`
+}
+
+func nesdcTabulationCmd() *cobra.Command {
+	var ff filterFlags
+	var outDir string
+	var sync bool
+	var maxPages int
+	c := &cobra.Command{
+		Use:   "tabulation <nttId>",
+		Short: "조사의 집계표(통계표) PDF만 정확히 골라 다운로드 (숫자 판독은 소비자 몫)",
+		Long: `여론조사의 여러 첨부 중 결과 집계표(통계표) PDF만 식별해 내려받습니다.
+설문지/질문지는 제외하고, 집계/통계 파일 또는 유일한 비설문 PDF를 고릅니다.
+
+kvote 는 파일을 정확히 surface 할 뿐, 표 안의 수치(국정수행 긍정/부정 등)를
+파싱·정규화하지 않습니다 — 판독은 사람 또는 AI 에이전트의 몫입니다.
+
+  단건:  nesdc tabulation <nttId> -o ./tab
+  배치:  nesdc tabulation --sync --from 2026-06-12 -o ./tab`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newNESDCClient()
+			ctx := context.Background()
+			board, err := nesdc.BoardByName("results")
+			if err != nil {
+				return err
+			}
+			dir := outDir
+			if dir == "" {
+				dir = "tabulations"
+			}
+			enc := output.NewLineEncoder(cmd.OutOrStdout())
+
+			save := func(nttID string) (tabManifest, error) {
+				path, att, d, err := client.Tabulation(ctx, board, nttID, dir)
+				if err != nil {
+					return tabManifest{}, err
+				}
+				m := tabManifest{NttID: nttID, Attachment: att.Name, Path: path}
+				if d != nil {
+					m.Agency = d.Summary["조사기관명"]
+					m.Client = d.Summary["조사의뢰자"]
+					m.SurveyDate = d.Summary["조사일시"]
+				}
+				return m, nil
+			}
+
+			if sync {
+				// --date-field defaults to "registered" (see filterFlags.register), so
+				// ff.options sets SearchTime — required or the portal ignores From/To.
+				collected, skipped := 0, 0
+				for page := 1; maxPages == 0 || page <= maxPages; page++ {
+					res, err := client.List(ctx, board, ff.options(page))
+					if err != nil {
+						return err
+					}
+					if len(res.Items) == 0 {
+						break
+					}
+					for _, item := range res.Items {
+						m, err := save(item.NttID)
+						if err != nil {
+							skipped++
+							fmt.Fprintf(cmd.ErrOrStderr(), "  skip %s: %v\n", item.NttID, err)
+							continue
+						}
+						if err := enc.Encode(m); err != nil {
+							return err
+						}
+						collected++
+					}
+				}
+				fmt.Fprintf(cmd.ErrOrStderr(), "완료: 집계표 %d건 저장, %d건 skip (→ %s)\n", collected, skipped, dir)
+				return nil
+			}
+
+			if len(args) != 1 {
+				return fmt.Errorf("nttId 인자 또는 --sync 가 필요합니다")
+			}
+			m, err := save(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "저장: %s\n", m.Path)
+			return enc.Encode(m)
+		},
+	}
+	f := c.Flags()
+	ff.register(f)
+	f.StringVarP(&outDir, "out", "o", "", "저장 디렉터리 (기본: tabulations/)")
+	f.BoolVar(&sync, "sync", false, "기간 내 조사를 배치로 순회 (--from/--to)")
+	f.IntVar(&maxPages, "max-pages", 0, "최대 페이지 수 (0=전체)")
 	return c
 }
 
