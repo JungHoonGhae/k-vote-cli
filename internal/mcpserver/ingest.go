@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/nesdc"
@@ -22,6 +23,9 @@ type ingestSummary struct {
 }
 type ingestPollsIn struct {
 	Board string `json:"board,omitempty" jsonschema:"NESDC board name carrying the cumulative master xlsx (default 'data')"`
+}
+type ingestTurnoutIn struct {
+	PK string `json:"pk" jsonschema:"data.go.kr publicDataPk of the 투표율 분석 (ZIP) file dataset to download and ingest"`
 }
 
 func registerIngestTools(s *mcp.Server, deps Deps) {
@@ -99,5 +103,43 @@ func registerIngestTools(s *mcp.Server, deps Deps) {
 		}
 		return nil, &ingestSummary{DatasetID: dsID, Rows: len(recs),
 			Message: fmt.Sprintf("%d건 적재", len(recs))}, nil
+	})
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "ingest_turnout",
+		Description: "data.go.kr publicDataPk 의 투표율 분석(ZIP)을 API 키 없이 내려받아 성별·연령대별 투표율로 정규화 후 로컬 DB에 적재한다(멱등). 사전/재외·PDF 데이터셋은 미지원.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in ingestTurnoutIn) (*mcp.CallToolResult, *ingestSummary, error) {
+		dir, err := os.MkdirTemp("", "kvote-mcp-turnout-")
+		if err != nil {
+			return errResult(err.Error()), nil, nil
+		}
+		defer os.RemoveAll(dir)
+		path, err := deps.NEC.Download(ctx, in.PK, dir)
+		if err != nil {
+			return errResult(fmt.Sprintf("다운로드 실패: %v", err)), nil, nil
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return errResult(err.Error()), nil, nil
+		}
+		recs, err := nec.ParseTurnoutAnalysis(raw)
+		if err != nil {
+			return errResult(fmt.Sprintf("정규화 실패: %v", err)), nil, nil
+		}
+		election := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		for i := range recs {
+			recs[i].Election = election
+		}
+		db, err := store.Open(deps.DBPath)
+		if err != nil {
+			return errResult(err.Error()), nil, nil
+		}
+		defer db.Close()
+		dsID, err := db.IngestTurnout(store.DatasetMeta{Source: "nec", PublicDataPk: in.PK, Name: filepath.Base(path), ElectionName: election}, recs)
+		if err != nil {
+			return errResult(err.Error()), nil, nil
+		}
+		return nil, &ingestSummary{DatasetID: dsID, Rows: len(recs),
+			Message: fmt.Sprintf("%d개 (지역×성별×연령) 셀 적재", len(recs))}, nil
 	})
 }

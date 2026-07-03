@@ -1,6 +1,8 @@
 package mcpserver
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"github.com/JungHoonGhae/k-vote-cli/internal/nec"
 	"github.com/JungHoonGhae/k-vote-cli/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/xuri/excelize/v2"
 )
 
 // necFixtureServer serves the minimal 3-step download flow
@@ -196,6 +199,91 @@ func TestSearchDatasetsTool(t *testing.T) {
 	}
 	if len(out.Datasets) < 1 {
 		t.Fatalf("got %d datasets, want >= 1: %+v", len(out.Datasets), out.Datasets)
+	}
+}
+
+// buildTurnoutZipBytes mirrors internal/nec/turnout_test.go's fixture: a minimal
+// 성별·연령대별 투표율 xlsx wrapped in a zip. Kept local to avoid cross-package test deps.
+func buildTurnoutZipBytes(t *testing.T) []byte {
+	t.Helper()
+	f := excelize.NewFile()
+	sh := "서울"
+	f.SetSheetName("Sheet1", sh)
+	s := func(c, v string) { f.SetCellValue(sh, c, v) }
+	s("A1", "성별·연령대별 투표율(구시군별)")
+	s("A3", "[표본-일반][서울특별시]")
+	s("A4", "구분")
+	s("D4", "합계")
+	s("A5", "전체")
+	s("B5", "합계")
+	s("C5", "선거인수")
+	s("D5", "100")
+	s("C6", "투표자수")
+	s("D6", "60")
+	s("C7", "투표율")
+	s("D7", "60.0")
+	var xb bytes.Buffer
+	f.Write(&xb)
+	var zb bytes.Buffer
+	zw := zip.NewWriter(&zb)
+	w, _ := zw.Create("02_선거일 투표/성별·연령대별.xlsx")
+	w.Write(xb.Bytes())
+	zw.Close()
+	return zb.Bytes()
+}
+
+func TestIngestTurnoutTool(t *testing.T) {
+	zipBytes := buildTurnoutZipBytes(t)
+	const detailHTML = `<html><body><script>
+function init(){ fn_fileDataDown('15143936', 'uddi:aaaa-bbbb-cc', '','1', '3'); }
+</script></body></html>`
+	const resolveJSON = `{"status":true,"atchFileId":"FILE_0001","fileDetailSn":1,
+"dataSetFileDetailInfo":{"dataNm":"투표율분석"}}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/data/15143936/fileData.do":
+			w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+			w.Write([]byte(detailHTML))
+		case "/tcs/dss/selectFileDataDownload.do":
+			w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+			w.Write([]byte(resolveJSON))
+		case "/cmm/cmm/fileDownload.do":
+			w.Header().Set("Content-Disposition", `attachment; filename="투표율분석.zip"`)
+			w.Header().Set("Content-Type", "application/zip")
+			w.Write(zipBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	p := filepath.Join(t.TempDir(), "k.db")
+	deps := Deps{DBPath: p, NEC: nec.New(nec.WithBaseURL(srv.URL), nec.WithDelay(0))}
+	sv := New(deps)
+	ct, st := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	sv.Connect(ctx, st, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "t", Version: "0"}, nil)
+	cs, _ := client.Connect(ctx, ct, nil)
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "ingest_turnout", Arguments: map[string]any{"pk": "15143936"}})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("tool error: %+v", res.Content)
+	}
+	// verify rows landed
+	ro, _ := store.OpenReadOnly(p)
+	defer ro.Close()
+	qr, err := ro.Query("SELECT count(*) FROM turnout", 10)
+	if err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	if len(qr.Rows) != 1 {
+		t.Fatalf("no count row")
 	}
 }
 
