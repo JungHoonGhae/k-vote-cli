@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/transform"
 )
 
-// buildTurnoutZip makes a minimal 성별·연령대별 투표율 xlsx and wraps it in a zip,
+// buildTurnoutXlsx makes a minimal 성별·연령대별 투표율 xlsx (as raw bytes),
 // matching the real layout: title row, bracket marker, 구분 header, then
 // per-region blocks of (전체/남자/여자) × (선거인수/투표자수/투표율).
-func buildTurnoutZip(t *testing.T) []byte {
+func buildTurnoutXlsx(t *testing.T) []byte {
 	t.Helper()
 	f := excelize.NewFile()
 	sh := "서울"
@@ -69,10 +71,18 @@ func buildTurnoutZip(t *testing.T) []byte {
 	if err := f.Write(&xlsxBuf); err != nil {
 		t.Fatalf("write xlsx: %v", err)
 	}
+	return xlsxBuf.Bytes()
+}
+
+// buildTurnoutZip wraps buildTurnoutXlsx in a zip with UTF-8 entry names (as
+// Go's zip.Writer produces by default).
+func buildTurnoutZip(t *testing.T) []byte {
+	t.Helper()
+	xlsxBytes := buildTurnoutXlsx(t)
 	var zipBuf bytes.Buffer
 	zw := zip.NewWriter(&zipBuf)
 	w, _ := zw.Create("02_선거일 투표/02_성별·연령대별 투표율(구시군별).xlsx")
-	w.Write(xlsxBuf.Bytes())
+	w.Write(xlsxBytes)
 	// 매칭 안 되는 파일도 하나 넣어 graceful-skip 검증
 	w2, _ := zw.Create("03_사전투표/01_전체.xlsx")
 	w2.Write([]byte("not an xlsx"))
@@ -118,6 +128,44 @@ func TestParseTurnoutAnalysis(t *testing.T) {
 	}
 	if got.Election != "" {
 		t.Errorf("Election should be empty (caller fills), got %q", got.Election)
+	}
+}
+
+// TestParseTurnoutAnalysisCP949Filename regression-tests real NEC 투표율 분석
+// zips whose entry names are CP949/EUC-KR encoded WITHOUT the ZIP UTF-8 flag
+// (Go's archive/zip surfaces those as raw undecoded bytes in zf.Name). The
+// UTF-8 fixture above doesn't catch this because Go's zip.Writer always sets
+// the UTF-8 flag for entry names that are already valid UTF-8.
+func TestParseTurnoutAnalysisCP949Filename(t *testing.T) {
+	xlsxBytes := buildTurnoutXlsx(t)
+
+	enc := korean.EUCKR.NewEncoder()
+	cp949Name, _, err := transform.String(enc, "02_성별·연령대별 투표율(구시군별).xlsx")
+	if err != nil {
+		t.Fatalf("encode CP949 filename: %v", err)
+	}
+
+	var zipBuf bytes.Buffer
+	zw := zip.NewWriter(&zipBuf)
+	w, err := zw.CreateHeader(&zip.FileHeader{
+		Name:    cp949Name,
+		NonUTF8: true,
+		Method:  zip.Deflate,
+	})
+	if err != nil {
+		t.Fatalf("create zip header: %v", err)
+	}
+	w.Write(xlsxBytes)
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+
+	recs, err := ParseTurnoutAnalysis(zipBuf.Bytes())
+	if err != nil {
+		t.Fatalf("ParseTurnoutAnalysis: %v", err)
+	}
+	if len(recs) != 12 {
+		t.Fatalf("got %d records, want 12 (same as UTF-8 fixture)", len(recs))
 	}
 }
 

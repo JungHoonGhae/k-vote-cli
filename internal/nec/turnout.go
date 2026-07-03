@@ -38,18 +38,22 @@ func ParseTurnoutAnalysis(zipRaw []byte) ([]TurnoutAnalysisRecord, error) {
 	}
 	var out []TurnoutAnalysisRecord
 	for _, zf := range zr.File {
-		if !strings.HasSuffix(strings.ToLower(zf.Name), ".xlsx") {
+		// Real NEC zips often encode entry names as CP949/EUC-KR without the ZIP
+		// UTF-8 flag, so zf.Name can be raw undecoded bytes. decodeKorean is a
+		// no-op when the name is already valid UTF-8 (as in our test fixtures).
+		name := decodeKorean([]byte(zf.Name))
+		if !strings.HasSuffix(strings.ToLower(name), ".xlsx") {
 			continue
 		}
-		if !strings.Contains(zf.Name, "성별") { // target filename hint
+		if !strings.Contains(name, "성별") { // target filename hint
 			continue
 		}
 		raw, err := readZipEntry(zf)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip %q: %v\n", zf.Name, err)
+			fmt.Fprintf(os.Stderr, "skip %q: %v\n", name, err)
 			continue
 		}
-		recs := parseTurnoutXLSX(zf.Name, raw)
+		recs := parseTurnoutXLSX(name, raw)
 		out = append(out, recs...)
 	}
 	if len(out) == 0 {
