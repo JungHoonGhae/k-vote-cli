@@ -234,6 +234,48 @@ func TestViewMatchesAggregate(t *testing.T) {
 	}
 }
 
+func sampleTurnout() []nec.TurnoutAnalysisRecord {
+	return []nec.TurnoutAnalysisRecord{
+		{Election: "제22대 총선", Category: "표본-일반", RegionLevel: "구시군", Sido: "서울",
+			Region: "전체", Gender: "합계", AgeGroup: "합계", Electorate: 710801, Voters: 493617, Rate: 69.4},
+		{Election: "제22대 총선", Category: "표본-일반", RegionLevel: "구시군", Sido: "서울",
+			Region: "전체", Gender: "남자", AgeGroup: "18세", Electorate: 0, Voters: 0, Rate: 0},
+	}
+}
+
+func TestIngestTurnoutIdempotent(t *testing.T) {
+	db, _ := Open(filepath.Join(t.TempDir(), "k.db"))
+	defer db.Close()
+	meta := DatasetMeta{Source: "nec", PublicDataPk: "15143936", Name: "투표율분석.zip"}
+	if _, err := db.IngestTurnout(meta, sampleTurnout()); err != nil {
+		t.Fatalf("ingest 1: %v", err)
+	}
+	if _, err := db.IngestTurnout(meta, sampleTurnout()); err != nil {
+		t.Fatalf("ingest 2: %v", err)
+	}
+	var n int
+	db.SQL().QueryRow("SELECT count(*) FROM turnout").Scan(&n)
+	if n != 2 {
+		t.Errorf("재적재 후 turnout=%d, want 2 (중복 없음)", n)
+	}
+	// v_turnout_derived: electorate>0 → rate_computed 계산, electorate=0 → NULL
+	var rc *float64
+	db.SQL().QueryRow(`SELECT rate_computed FROM v_turnout_derived
+		WHERE region='전체' AND gender='합계' AND age_group='합계'`).Scan(&rc)
+	if rc == nil {
+		t.Fatal("rate_computed nil for electorate>0")
+	}
+	want := float64(493617) / 710801 * 100
+	if *rc < want-1e-6 || *rc > want+1e-6 {
+		t.Errorf("rate_computed = %v, want %v", *rc, want)
+	}
+	var rc0 *float64
+	db.SQL().QueryRow(`SELECT rate_computed FROM v_turnout_derived WHERE age_group='18세'`).Scan(&rc0)
+	if rc0 != nil {
+		t.Errorf("rate_computed should be NULL for electorate=0, got %v", *rc0)
+	}
+}
+
 func toStr(v any) string { s, _ := v.(string); return s }
 func toInt(v any) int {
 	switch n := v.(type) {

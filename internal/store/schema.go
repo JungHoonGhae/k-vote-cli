@@ -109,6 +109,22 @@ SELECT dataset_id, vote_type,
        CASE WHEN SUM(electorate) > 0
             THEN CAST(SUM(votes) AS REAL)/SUM(electorate) END AS turnout
 FROM results GROUP BY dataset_id, vote_type;
+
+CREATE TABLE IF NOT EXISTS turnout (
+  id           INTEGER PRIMARY KEY,
+  dataset_id   INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+  election     TEXT, category TEXT, region_level TEXT, sido TEXT, region TEXT,
+  gender       TEXT, age_group TEXT,
+  electorate   INTEGER, voters INTEGER, rate REAL   -- rate = 소스 제공 원자료
+);
+CREATE INDEX IF NOT EXISTS idx_turnout_dataset ON turnout(dataset_id);
+
+-- 표준 파생: 소스 보고 투표율(rate_reported) 옆에 재계산값을 나란히. 정의 명시(중립).
+CREATE VIEW IF NOT EXISTS v_turnout_derived AS
+SELECT id, dataset_id, election, category, region_level, sido, region, gender, age_group,
+       electorate, voters, rate AS rate_reported,
+       CASE WHEN electorate > 0 THEN CAST(voters AS REAL)/electorate*100 END AS rate_computed
+FROM turnout;
 `
 
 // SchemaDoc is the human-readable schema surfaced via the kvote://schema MCP
@@ -134,4 +150,10 @@ const SchemaDoc = `# kvote 로컬 DB 스키마
 
 ## 후보 득표율
 candidates 를 v_results_derived 와 조인해 후보득표 / valid_votes 로 계산(정의).
+
+- turnout(id, dataset_id, election, category[표본/표본-일반…], region_level[구시군|선거구],
+    sido, region, gender[합계|남자|여자], age_group[합계|18세|20-24세…], electorate, voters,
+    rate)  -- rate 는 소스가 보고한 투표율 원자료
+- v_turnout_derived: 위 + rate_computed = voters/electorate*100 (electorate 0 → NULL).
+    rate_reported(소스값) 와 rate_computed(재계산) 를 나란히 — 판단은 소비자.
 `
