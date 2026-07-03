@@ -91,6 +91,7 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 | 여론조사 | 누적 마스터 엑셀 → 정당지지율 (2023.10.30~ 1,400+건) | `nesdc bulk` | - |
 | 여론조사 | 단건 상세 메타 + 표본 구성 교차표 | `nesdc show <nttId> --crosstab` | - |
 | 여론조사 | 첨부 PDF(통계표·설문지) 다운로드 | `nesdc pull <nttId>` | - |
+| 여론조사 | 결과 집계표 PDF만 정확히 골라 받기 (단건·`--sync` 배치) | `nesdc tabulation <nttId>` | - |
 | 점검 | 킬러 경로 라이브 점검 (사이트 개편 깨짐 감지) | `doctor` | - |
 | 🧪 OpenAPI | 투표율 (시도/구시군별, 본/사전 분리) | `nec turnout <sgId> --sgtype N` | 🔑 |
 | 🧪 OpenAPI | 당선인 (선거구·기호·정당·이름·득표) | `nec winners <sgId> --sgtype N` | 🔑 |

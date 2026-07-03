@@ -78,6 +78,8 @@ internal/nesdc/     NESDC provider — HTML 스크래핑 클라이언트 (packag
   download.go       FileDown.do 다운로드 + 파일명 인코딩 복구
   bulk.go           data 게시판 누적 마스터 엑셀(excelize) → 정규화 PollRecord
   agency.go         onvy 조사기관 등록/취소 현황 파서
+  tabulation.go     집계표(통계표) 첨부 식별·다운로드 (PickTabulationAttachment). PDF 수치 파싱은
+                     하지 않음 — 판독은 소비자/AI 에이전트 몫(이질적 PDF 파싱의 silent-wrong 회피).
 internal/store/     로컬 SQLite 통합 데이터셋 (modernc, 키리스·중립)
   store.go          open/close, 경로 결정, read-only 모드, user_version 마이그레이션
   schema.go         DDL(원자료 테이블 turnout 포함 + 표준 파생 뷰 v_turnout_derived 등) +
