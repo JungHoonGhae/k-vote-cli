@@ -134,6 +134,7 @@ func parseTurnoutSheet(sheet string, rows [][]string) []TurnoutAnalysisRecord {
 		}
 	}
 	if headerRow < 0 || len(ageCols) == 0 {
+		fmt.Fprintf(os.Stderr, "skip sheet %q: 성별·연령대별 앵커 없음\n", sheet)
 		return nil // not a target sheet
 	}
 
