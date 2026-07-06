@@ -28,6 +28,18 @@
 
 ## Why this exists
 
+Distrust in how elections are administered runs higher in Korea than it has in a long time.
+What stays out of reach stays unknown — and the unknown is where fear and distrust take root.
+And in an era when anyone can analyze anything with an AI at their side, election data alone
+still sits behind blocked portals, legacy formats, and API keys that must be applied for one
+dataset at a time — hard to reach for people and for AI alike.
+
+This tool cannot settle the question of distrust. But as one developer, I wanted to fix this
+one problem: even if it is nowhere near enough, the data that already exists should at least
+be easier to reach. And when more people can open things up and verify them for themselves,
+perhaps we can build, together, a system that earns a little more trust. That vague hunch is
+where this project began.
+
 You want to check an election result yourself, or see how this week's polls came out.
 The data is "public" — but where do you download it, which of the dozens of similar datasets is the
 right one, and why is the file garbled when you finally get it? info.nec.go.kr blocks automated

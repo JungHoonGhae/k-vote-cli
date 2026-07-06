@@ -9,3 +9,7 @@
 /out/
 .DS_Store
 /dist/
+
+# promo (Remotion)
+promo/node_modules/
+promo/out/
