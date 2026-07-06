@@ -203,8 +203,8 @@ const SceneNumbers: React.FC = () => {
   return (
     <Center>
       <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", opacity }}>
-        <Counter from={8} target={18861} label="투표구" outAt={86} />
-        <Counter from={100} target={35236497} label="표" />
+        <Counter from={8} target={4260} label="읍면동" outAt={86} />
+        <Counter from={100} target={22564394} label="표" />
       </AbsoluteFill>
       <div
         style={{
@@ -218,7 +218,7 @@ const SceneNumbers: React.FC = () => {
           opacity,
         }}
       >
-        제21대 대통령선거 개표결과 기준
+        제8회 전국동시지방선거 시·도지사선거 개표결과 기준
       </div>
     </Center>
   );
