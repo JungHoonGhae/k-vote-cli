@@ -1,8 +1,10 @@
 import {
   AbsoluteFill,
   Easing,
+  Img,
   Sequence,
   interpolate,
+  staticFile,
   useCurrentFrame,
 } from "remotion";
 import { loadFont as loadSans } from "@remotion/google-fonts/IBMPlexSansKR";
@@ -12,7 +14,7 @@ const sans = loadSans();
 const mono = loadMono();
 
 export const PROMO_FPS = 30;
-export const PROMO_DURATION = 1475; // 49.2s
+export const PROMO_DURATION = 1625; // 54.2s
 
 // 디자인 시스템 — 절제가 규칙이다.
 const BG = "#060606";
@@ -224,6 +226,92 @@ const SceneNumbers: React.FC = () => {
   );
 };
 
+/** AI 에이전트 로고 marquee. 로고는 전부 단색(오프화이트) 처리 — 미니멀 톤 유지. */
+const AGENT_LOGOS = [
+  "claude",
+  "codex",
+  "cursor",
+  "googlegemini",
+  "githubcopilot",
+  "perplexity",
+  "ollama",
+  "deepseek",
+  "qwen",
+  "mistralai",
+  "moonshotai",
+  "opencode",
+  "openclaw",
+];
+
+const SceneAgents: React.FC = () => {
+  const frame = useCurrentFrame();
+  const logoH = 54;
+  const cell = 190; // 로고 셀 폭 (로고 + 간격)
+  const rowW = AGENT_LOGOS.length * cell;
+  const x = -((frame * 2.6) % rowW);
+  const mask =
+    "linear-gradient(90deg, transparent, black 14%, black 86%, transparent)";
+  return (
+    <Center>
+      <div style={{ width: "100%", opacity: fadeOutAll(frame, 122) }}>
+        <Rise from={8}>
+          <div
+            style={{
+              textAlign: "center",
+              fontSize: 58,
+              fontWeight: 600,
+              color: INK,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            쓰던 AI 에이전트에, 그대로 연결됩니다.
+          </div>
+        </Rise>
+        <Rise from={32} style={{ marginTop: 100 }}>
+          <div
+            style={{
+              width: "100%",
+              overflow: "hidden",
+              WebkitMaskImage: mask,
+              maskImage: mask,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                width: rowW * 2,
+                transform: `translateX(${x}px)`,
+              }}
+            >
+              {[...AGENT_LOGOS, ...AGENT_LOGOS].map((name, i) => (
+                <div
+                  key={`${name}-${i}`}
+                  style={{ width: cell, display: "flex", justifyContent: "center" }}
+                >
+                  <Img
+                    src={staticFile(`logos/${name}.svg`)}
+                    style={{
+                      height: logoH,
+                      filter: "brightness(0) invert(0.92)",
+                      opacity: 0.82,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </Rise>
+        <Rise from={56} style={{ marginTop: 90 }}>
+          <div style={{ textAlign: "center", fontSize: 30, color: DIM }}>
+            MCP 지원 — 별도 연동 코드 없이
+          </div>
+        </Rise>
+      </div>
+    </Center>
+  );
+};
+
 /** S7: 정체성. 세 구절. */
 const SceneCreed: React.FC = () => {
   const frame = useCurrentFrame();
@@ -351,7 +439,10 @@ export const Promo: React.FC = () => {
       <Sequence from={870} durationInFrames={200}>
         <SceneNumbers />
       </Sequence>
-      <Sequence from={1070} durationInFrames={165}>
+      <Sequence from={1070} durationInFrames={150}>
+        <SceneAgents />
+      </Sequence>
+      <Sequence from={1220} durationInFrames={165}>
         <Statement
           line1="더 많은 사람이 열어 보고 직접 검증할 수 있다면,"
           line2="조금 더 신뢰할 만한 시스템을 같이 만들어갈 수 있지 않을까."
@@ -362,10 +453,10 @@ export const Promo: React.FC = () => {
           subFrom={96}
         />
       </Sequence>
-      <Sequence from={1235} durationInFrames={105}>
+      <Sequence from={1385} durationInFrames={105}>
         <SceneCreed />
       </Sequence>
-      <Sequence from={1340} durationInFrames={135}>
+      <Sequence from={1490} durationInFrames={135}>
         <SceneEnd />
       </Sequence>
     </AbsoluteFill>
