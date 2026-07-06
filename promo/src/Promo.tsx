@@ -7,10 +7,14 @@ import {
   staticFile,
   useCurrentFrame,
 } from "remotion";
-import { loadFont as loadSans } from "@remotion/google-fonts/IBMPlexSansKR";
+import { loadFont as loadLocalFont } from "@remotion/fonts";
 import { loadFont as loadMono } from "@remotion/google-fonts/IBMPlexMono";
 
-const sans = loadSans();
+loadLocalFont({
+  family: "Pretendard",
+  url: staticFile("fonts/PretendardVariable.woff2"),
+});
+const SANS = "Pretendard, sans-serif";
 const mono = loadMono();
 
 export const PROMO_FPS = 30;
@@ -21,7 +25,6 @@ const BG = "#060606";
 const INK = "#F2F1EC"; // off-white
 const DIM = "#77766F"; // muted gray
 const FAINT = "#4A4945";
-const ACCENT = "#39D0C3"; // 유일한 색. 정당색과 겹치지 않는 청록.
 
 const easeOut = Easing.bezier(0.16, 1, 0.3, 1);
 
@@ -60,7 +63,7 @@ const Center: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       backgroundColor: BG,
       alignItems: "center",
       justifyContent: "center",
-      fontFamily: sans.fontFamily,
+      fontFamily: SANS,
     }}
   >
     {children}
@@ -146,7 +149,7 @@ const SceneCommand: React.FC = () => {
             width: "0.62em",
             height: "1.15em",
             verticalAlign: "-0.22em",
-            backgroundColor: cursorOn ? ACCENT : "transparent",
+            backgroundColor: cursorOn ? INK : "transparent",
             marginLeft: 6,
           }}
         />
@@ -355,7 +358,7 @@ const SceneEnd: React.FC = () => {
                 width: "0.55em",
                 height: "1.02em",
                 verticalAlign: "-0.13em",
-                backgroundColor: cursorOn ? ACCENT : "transparent",
+                backgroundColor: cursorOn ? INK : "transparent",
                 marginLeft: 14,
               }}
             />
