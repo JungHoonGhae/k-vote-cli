@@ -54,7 +54,7 @@ homebrew_casks:
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/JungHoonGhae/k-vote-cli"
-    description: "한국 선거 공개 데이터 접근성 CLI (NESDC 여론조사 · NEC 개표결과) — 키리스·중립"
+    description: "한국 선거 공개 데이터를 API 키 없이 한 명령으로 — 개표결과·여론조사·투표율. 누구에게나 같은 데이터"
     # 미서명 바이너리의 macOS Gatekeeper 격리 제거 (없으면 첫 실행이 차단됨).
     hooks:
       post:

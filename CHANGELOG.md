@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-06
+
+### 설치·배포 개선
+- **설치 스크립트** — `curl -fsSL .../install.sh | sh` (macOS/Linux) 와 `irm .../install.ps1 | iex` (Windows) 한 줄 설치를 추가했습니다. 다운로드 후 체크섬을 검증합니다.
+- **`go install` 버전 표시** — `go install` 로 설치해도 `kvote version` 이 "dev" 대신 실제 버전과 커밋을 표시합니다.
+- **Homebrew 안내 정정** — tap 이 Cask 방식이라 macOS 전용임을 문서에 명확히 했습니다 (Linux 는 설치 스크립트 또는 `go install`).
+- 릴리즈 노트가 CHANGELOG 의 해당 버전 섹션으로 게시됩니다.
+
 ## [0.4.0] - 2026-07-03
 
 여론조사 결과 집계표를 정확히 골라 받습니다. 국정수행 지지율처럼 정규화 마스터가 없고 조사별 집계표 PDF에만 있는 수치를, kvote 가 올바른 PDF를 정확히 surface 해주면 사람·AI 에이전트가 직접 판독합니다. 이질적 PDF 수치를 억지로 파싱해 조용히 틀릴 위험을 피하는 의도적 설계입니다.
@@ -69,7 +77,8 @@
 ### 배포
 - macOS·Linux·Windows (amd64·arm64) 바이너리. Homebrew tap(`JungHoonGhae/k-vote-cli`) 제공.
 
-[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.1.0...v0.2.0

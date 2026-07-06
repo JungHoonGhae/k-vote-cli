@@ -186,16 +186,28 @@ kvote 는 특정 선거를 하드코딩하지 않습니다 — **선관위가 �
 
 ## 설치
 
-**`go install` (권장)**
+**설치 스크립트 (macOS/Linux — 권장)**
 
 ```bash
-go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
+curl -fsSL https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/install.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/install.ps1 | iex
 ```
 
 **Homebrew (macOS)**
 
 ```bash
 brew install JungHoonGhae/k-vote-cli/kvote
+```
+
+**`go install`**
+
+```bash
+go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 ```
 
 **소스 빌드**

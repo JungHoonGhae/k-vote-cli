@@ -194,16 +194,28 @@ portal today:
 
 ## Install
 
-**`go install` (recommended)**
+**Install script (macOS/Linux — recommended)**
 
 ```bash
-go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
+curl -fsSL https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/install.sh | sh
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/JungHoonGhae/k-vote-cli/main/install.ps1 | iex
 ```
 
 **Homebrew (macOS)**
 
 ```bash
 brew install JungHoonGhae/k-vote-cli/kvote
+```
+
+**`go install`**
+
+```bash
+go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 ```
 
 **Build from source**
