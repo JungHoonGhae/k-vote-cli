@@ -200,7 +200,7 @@ portal today:
 go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 ```
 
-**Homebrew (macOS/Linux)**
+**Homebrew (macOS)**
 
 ```bash
 brew install JungHoonGhae/k-vote-cli/kvote

@@ -192,7 +192,7 @@ kvote 는 특정 선거를 하드코딩하지 않습니다 — **선관위가 �
 go install github.com/JungHoonGhae/k-vote-cli/cmd/kvote@latest
 ```
 
-**Homebrew (macOS/Linux)**
+**Homebrew (macOS)**
 
 ```bash
 brew install JungHoonGhae/k-vote-cli/kvote
