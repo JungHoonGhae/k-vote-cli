@@ -8,14 +8,6 @@
 </div>
 
 <p align="center">
-  <a href="LICENSE"><img src="docs/badges/license.svg" height="44" alt="MIT License" /></a>
-  &nbsp;<img src="docs/badges/keyless-core.svg" height="44" alt="keyless core" />
-  &nbsp;<img src="docs/badges/go.svg" height="44" alt="Built with Go" />
-  &nbsp;<img src="docs/badges/agents.svg" height="44" alt="Works with Claude · Codex · jq · duckdb" />
-  &nbsp;<img src="docs/badges/output.svg" height="44" alt="Output: json · jsonl · table" />
-</p>
-
-<p align="center">
   <a href="#quick-start"><strong>Quick Start</strong></a> ·
   <a href="#기능"><strong>기능</strong></a> ·
   <a href="#설치"><strong>설치</strong></a> ·
@@ -26,7 +18,7 @@
 <p align="center">
   <a href="docs/k-vote-cli-promo.mp4"><img src="docs/k-vote-cli-promo.gif" alt="k-vote-cli 홍보: 개표결과도, 이번주 여론조사도 한 명령으로" width="760" /></a>
 </p>
-<p align="center"><sub>▶ <a href="docs/k-vote-cli-promo.mp4">HD 영상</a> · <a href="docs/k-vote-cli.gif">터미널 데모</a></sub></p>
+<p align="center"><sub><a href="docs/k-vote-cli-promo.mp4">HD 영상</a> · <a href="docs/k-vote-cli.gif">터미널 데모</a></sub></p>
 
 > [!WARNING]
 > 공개 포털의 HTML 구조에 의존하므로 사이트 개편 시 동작이 깨질 수 있습니다.
@@ -60,10 +52,10 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 
 ## 무엇이 특별한가
 
-- 📦 **역대 개표결과가 한 명령에**: 대선·총선·지방을 동시에 받아 투표구별로 정리 (`nec corpus`)
-- 📊 **이번주 여론조사까지 통째로**: 등록된 모든 조사와 정당지지율 시계열 (`nesdc sync` · `bulk`)
-- 🤖 **인증키 발급을 AI가 대신**: data.go.kr 가입·활용신청·승인을 알아서 처리 (`api login` · `apply`)
-- ⚖️ **원본 그대로, 언제 돌려도 같은 결과**: 누구나 그대로 재현
+- **역대 개표결과가 한 명령에** — 대선·총선·지방을 동시에 받아 투표구별로 정리 (`nec corpus`)
+- **이번주 여론조사까지 통째로** — 등록된 모든 조사와 정당지지율 시계열 (`nesdc sync` · `bulk`)
+- **인증키 발급을 AI가 대신** — data.go.kr 가입·활용신청·승인을 알아서 처리 (`api login` · `apply`)
+- **원본 그대로, 언제 돌려도 같은 결과** — 누구나 그대로 재현
 
 ## Before → After
 
@@ -76,29 +68,31 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 
 ## 기능
 
-> 출력은 `-f json|jsonl|table`. **🔑 표시 외 모든 명령은 API 키 없이 동작**합니다.
-> 🔑 = data.go.kr 인증키 필요(`kvote api` 로 자동 발급) · 🧪 = 실험적(키리스 경로 우선).
+> 출력은 `-f json|jsonl|table`. **API 키 없이** 열이 **O** 인 명령은 가입·인증키 발급 없이 바로 동작합니다.
+> **X** = data.go.kr 인증키 필요(`kvote api` 로 자동 발급). OpenAPI·계정 그룹은 실험적 기능입니다.
 
-| 분류 | 기능 | 커맨드 | 키 |
+| 분류 | 기능 | 커맨드 | API 키 없이 |
 |---|---|---|:--:|
-| **⭐ 핵심** | 역대 핵심 개표결과 동시 다운로드 + 투표구별 정규화 | `nec corpus --normalize` | - |
-| 개표결과 | 개표결과를 투표구별로 정규화 (집계·본/사전 분리) | `nec results <pk>` | - |
-| 개표결과 | 공개 데이터셋 검색 (개표결과 등) | `nec datasets -q <검색어>` | - |
-| 개표결과 | 선거종류 최신 회차 자동 해석 | `nec latest <키워드>` | - |
-| 개표결과 | 원본 파일 다운로드 (CSV/XLSX 자동) | `nec pull <pk>` | - |
-| 투표율 | 투표율 분석(ZIP)을 성별·연령대별·지역별로 정규화 | `nec turnout-analysis <pk>` | - |
-| 여론조사 | 기간/조건 전체를 JSONL 로 전수 수집 | `nesdc sync` | - |
-| 여론조사 | 누적 마스터 엑셀 → 정당지지율 (2023.10.30~ 1,400+건) | `nesdc bulk` | - |
-| 여론조사 | 단건 상세 메타 + 표본 구성 교차표 | `nesdc show <nttId> --crosstab` | - |
-| 여론조사 | 첨부 PDF(통계표·설문지) 다운로드 | `nesdc pull <nttId>` | - |
-| 여론조사 | 결과 집계표 PDF만 정확히 골라 받기 (단건·`--sync` 배치) | `nesdc tabulation <nttId>` | - |
-| 점검 | 킬러 경로 라이브 점검 (사이트 개편 깨짐 감지) | `doctor` | - |
-| 🧪 OpenAPI | 투표율 (시도/구시군별, 본/사전 분리) | `nec turnout <sgId> --sgtype N` | 🔑 |
-| 🧪 OpenAPI | 당선인 (선거구·기호·정당·이름·득표) | `nec winners <sgId> --sgtype N` | 🔑 |
-| 🧪 OpenAPI | 선거코드 레지스트리 (1987~ 모든 sgId·선거종류) | `nec elections` | 🔑 |
-| 🧪 계정 | 브라우저 1회 로그인 → 세션 유지 | `api login` | - |
-| 🧪 계정 | 내 활용신청 현황 (상태·**만료예정일**) | `api list` | 🔑 |
-| 🧪 계정 | OpenAPI 활용신청 자동제출 (목적 필수·확인) | `api apply <pk> --purpose` | 🔑 |
+| **핵심** | 역대 핵심 개표결과 동시 다운로드 + 투표구별 정규화 | `nec corpus --normalize` | **O** |
+| 개표결과 | 개표결과를 투표구별로 정규화 (집계·본/사전 분리) | `nec results <pk>` | **O** |
+| 개표결과 | 공개 데이터셋 검색 (개표결과 등) | `nec datasets -q <검색어>` | **O** |
+| 개표결과 | 선거종류 최신 회차 자동 해석 | `nec latest <키워드>` | **O** |
+| 개표결과 | 원본 파일 다운로드 (CSV/XLSX 자동) | `nec pull <pk>` | **O** |
+| 투표율 | 투표율 분석(ZIP)을 성별·연령대별·지역별로 정규화 | `nec turnout-analysis <pk>` | **O** |
+| 여론조사 | 기간/조건 전체를 JSONL 로 전수 수집 | `nesdc sync` | **O** |
+| 여론조사 | 누적 마스터 엑셀 → 정당지지율 (2023.10.30~ 1,400+건) | `nesdc bulk` | **O** |
+| 여론조사 | 단건 상세 메타 + 표본 구성 교차표 | `nesdc show <nttId> --crosstab` | **O** |
+| 여론조사 | 첨부 PDF(통계표·설문지) 다운로드 | `nesdc pull <nttId>` | **O** |
+| 여론조사 | 결과 집계표 PDF만 정확히 골라 받기 (단건·`--sync` 배치) | `nesdc tabulation <nttId>` | **O** |
+| 로컬 DB | 개표·여론조사·투표율을 SQLite 에 적재 + read-only SQL | `db ingest …` · `db query` | **O** |
+| AI 에이전트 | MCP 서버 (탐색·수집·SQL 질의를 tool 로) | `mcp` | **O** |
+| 점검 | 핵심 경로 라이브 점검 (사이트 개편 깨짐 감지) | `doctor` | **O** |
+| OpenAPI | 투표율 (시도/구시군별, 본/사전 분리) | `nec turnout <sgId> --sgtype N` | X |
+| OpenAPI | 당선인 (선거구·기호·정당·이름·득표) | `nec winners <sgId> --sgtype N` | X |
+| OpenAPI | 선거코드 레지스트리 (1987~ 모든 sgId·선거종류) | `nec elections` | X |
+| 계정 | 브라우저 1회 로그인 → 세션 유지 | `api login` | **O** |
+| 계정 | 내 활용신청 현황 (상태·**만료예정일**) | `api list` | X |
+| 계정 | OpenAPI 활용신청 자동제출 (목적 필수·확인) | `api apply <pk> --purpose` | X |
 
 <details>
 <summary><strong>주요 옵션 펼치기</strong></summary>
@@ -115,7 +109,7 @@ k-vote-cli 가 이걸 전부 흡수합니다.
 
 </details>
 
-### `nec corpus` (킬러)
+### `nec corpus` — 대표 기능
 
 `nec corpus --normalize` 한 줄이면 역대 핵심 개표결과(대선 제16·17·21대, 총선·비례, 지방 5~8회)가
 동시 다운로드되고, 받는 즉시 투표구별 JSONL 로 정규화됩니다. 받아서 바로 들여다볼 수 있는 상태로.
@@ -312,11 +306,11 @@ DB 경로는 기본적으로 OS 설정 디렉터리(`.../kvote/kvote.db`)이며 
 
 ## 데이터 출처
 
-| provider | 사이트 | 내용 | 키 |
+| provider | 사이트 | 내용 | API 키 없이 |
 |---|---|---|:--:|
-| `nec` | 중앙선거관리위원회 → data.go.kr | 개표결과(파일) + 투표율·당선인(OpenAPI) | 파일 없음 / API 🔑 |
-| `nesdc` | 중앙선거여론조사심의위원회 (nesdc.go.kr) | 여론조사 결과·표본 구성 | - |
-| `api` | data.go.kr 계정 | OpenAPI 활용신청·인증키·만료 관리 | 🔑 |
+| `nec` | 중앙선거관리위원회 → data.go.kr | 개표결과(파일) + 투표율·당선인(OpenAPI) | 파일 **O** / OpenAPI X |
+| `nesdc` | 중앙선거여론조사심의위원회 (nesdc.go.kr) | 여론조사 결과·표본 구성 | **O** |
+| `api` | data.go.kr 계정 | OpenAPI 활용신청·인증키·만료 관리 | X |
 
 `nec` 은 선거통계시스템(info.nec.go.kr)이 robots.txt 로 전면 크롤링을 금지하므로 **직접 스크래핑하지
 않습니다.** 대신 선관위가 공식 배포 채널인 **data.go.kr 의 개표결과 파일(CSV/XLSX)** 을 API 키 없이
@@ -335,7 +329,7 @@ go vet ./...
 
 ## 기여
 
-이슈·PR 환영합니다. 시작 전 [CONTRIBUTING.md](CONTRIBUTING.md)의 **두 가지 타협 불가 원칙**(중립성·키리스)을 읽어 주세요.
+이슈·PR 환영합니다. 시작 전 [CONTRIBUTING.md](CONTRIBUTING.md)의 **두 가지 타협 불가 원칙**(중립성 · API 키 없이)을 읽어 주세요.
 
 - 변경 이력: [CHANGELOG.md](CHANGELOG.md)
 - 행동 강령: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
