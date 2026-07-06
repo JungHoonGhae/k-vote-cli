@@ -21,8 +21,10 @@
 <p align="center"><sub><a href="docs/k-vote-cli-promo.mp4">HD video</a> · <a href="docs/k-vote-cli.gif">terminal demo</a></sub></p>
 
 > [!WARNING]
-> This tool depends on the HTML structure of public portals; a site redesign can break it.
-> Everything it collects is **public data with a legal disclosure mandate** (materials registered and
+> **Some features** (poll collection and the dataset search/download paths) depend on the HTML
+> structure of public portals, so a site redesign can break those paths — `kvote doctor` checks
+> them instantly. File parsing, the local DB, and MCP work regardless of portal changes.
+> Everything collected is **public data with a legal disclosure mandate** (materials registered and
 > published under Korea's election-poll regulations), fetched politely with a default rate limit.
 > Use at your own risk.
 
