@@ -339,3 +339,35 @@ func TestSchemaResource(t *testing.T) {
 		t.Fatal("schema resource empty")
 	}
 }
+
+// MCP query 는 limit 미지정 시 200행으로 캡된다(에이전트 컨텍스트 보호) —
+// CLI(store 기본 1000)와 다른 MCP 전용 기본값.
+func TestQueryToolDefaultLimit(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "k.db")
+	db, _ := store.Open(p)
+	for i := 0; i < 250; i++ {
+		db.SQL().Exec(`INSERT INTO datasets(source, ingested_at, row_count) VALUES('nec','now',0)`)
+	}
+	db.Close()
+
+	srv := New(Deps{DBPath: p})
+	ct, st := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	srv.Connect(ctx, st, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "t", Version: "0"}, nil)
+	cs, _ := client.Connect(ctx, ct, nil)
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "query", Arguments: map[string]any{"sql": "SELECT id FROM datasets"}})
+	if err != nil || res.IsError {
+		t.Fatalf("CallTool: err=%v isError=%v", err, res != nil && res.IsError)
+	}
+	var qr store.QueryResult
+	if err := json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &qr); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(qr.Rows) != 200 || !qr.Truncated {
+		t.Errorf("rows=%d truncated=%v, want 200/true", len(qr.Rows), qr.Truncated)
+	}
+}

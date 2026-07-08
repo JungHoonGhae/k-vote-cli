@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-08
+
+### MCP — 에이전트 컨텍스트 보호
+- **`query` 기본 반환을 200행으로 캡** — 에이전트가 `SELECT *` 로 수십만 행을 컨텍스트에 쏟는 사고를 막습니다. 초과분은 `truncated: true` 로 표시되며, `limit` 파라미터로 명시적으로 올릴 수 있습니다. CLI(`kvote db query`)의 기본값(1,000행)은 그대로입니다.
+- tool 설명에 집계 SQL 권장 안내를 추가했습니다. 고정 컨텍스트 비용은 tool 6개, 약 4KB 그대로입니다.
+
 ## [0.4.1] - 2026-07-06
 
 ### 설치·배포 개선
@@ -77,7 +83,8 @@
 ### 배포
 - macOS·Linux·Windows (amd64·arm64) 바이너리. Homebrew tap(`JungHoonGhae/k-vote-cli`) 제공.
 
-[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/JungHoonGhae/k-vote-cli/compare/v0.2.0...v0.3.0

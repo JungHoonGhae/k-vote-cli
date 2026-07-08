@@ -24,9 +24,14 @@ type Deps struct {
 // --- tool I/O types (struct → JSON schema 자동 추론) ---
 
 type queryIn struct {
-	SQL   string `json:"sql" jsonschema:"read-only SQL statement to execute against the kvote DB (see kvote://schema)"`
-	Limit int    `json:"limit,omitempty" jsonschema:"max rows to return (default 1000)"`
+	SQL   string `json:"sql" jsonschema:"read-only SQL statement to execute against the kvote DB (see kvote://schema). Prefer aggregation/LIMIT — large results consume your context"`
+	Limit int    `json:"limit,omitempty" jsonschema:"max rows to return (default 200; raise explicitly for bulk reads)"`
 }
+
+// mcpQueryLimit caps rows returned into an agent's context window. CLI (kvote
+// db query) keeps the larger store default; agents should aggregate or raise
+// limit explicitly.
+const mcpQueryLimit = 200
 
 // New builds the MCP server with all tools and the schema resource registered.
 func New(deps Deps) *mcp.Server {
@@ -39,7 +44,7 @@ func New(deps Deps) *mcp.Server {
 	// query: read-only SQL passthrough.
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "query",
-		Description: "kvote 로컬 DB에 read-only SQL을 실행한다. 스키마·파생값 정의는 먼저 kvote://schema 리소스를 읽을 것. 쓰기 SQL은 엔진이 거부한다.",
+		Description: "kvote 로컬 DB에 read-only SQL을 실행한다. 스키마·파생값 정의는 먼저 kvote://schema 리소스를 읽을 것. 쓰기 SQL은 엔진이 거부한다. 기본 200행 반환(truncated 표시) — 집계 SQL 권장.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryIn) (*mcp.CallToolResult, *store.QueryResult, error) {
 		// sql.Open 은 지연 연결이라 파일이 없어도 여기선 에러가 안 남 — 미리 확인해
 		// "unable to open database file" 같은 불친절한 저수준 에러 대신 안내 메시지를 준다.
@@ -51,7 +56,11 @@ func New(deps Deps) *mcp.Server {
 			return errResult(fmt.Sprintf("DB 열기 실패: %v — 먼저 ingest_results/ingest_polls 로 적재하세요", err)), nil, nil
 		}
 		defer db.Close()
-		qr, err := db.Query(in.SQL, in.Limit)
+		limit := in.Limit
+		if limit <= 0 {
+			limit = mcpQueryLimit
+		}
+		qr, err := db.Query(in.SQL, limit)
 		if err != nil {
 			return errResult(fmt.Sprintf("질의 오류: %v", err)), nil, nil
 		}
